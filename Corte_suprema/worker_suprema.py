@@ -189,9 +189,10 @@ def scrape_worker(task):
             if error_reintentar_pagina:
                 reintentos_pagina += 1
                 if reintentos_pagina > MAX_REINTENTOS_PAGINA:
-                    print(f"[{dia_id}] Se superó el máximo de reintentos ({MAX_REINTENTOS_PAGINA}) para la página {pagina_actual}. Saltando a la siguiente página.")
-                    pagina_actual += 1
-                    reintentos_pagina = 0
+                    print(f"[{dia_id}] Se superó el máximo de reintentos ({MAX_REINTENTOS_PAGINA}) para la página {pagina_actual}. Cerrando worker y notificando al main para reintentar desde el checkpoint...")
+                    if driver:
+                        driver.quit()
+                    return f"RETRY:{dia_id}:page_{pagina_actual}"
                 else:
                     print(f"[{dia_id}] Reintentando página {pagina_actual} (intento {reintentos_pagina}/{MAX_REINTENTOS_PAGINA})...")
                     time.sleep(3)
