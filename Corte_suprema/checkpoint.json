@@ -2396,7 +2396,7 @@
         "last_page": 2
     },
     "2022-08-23": {
-        "status": "in_progress",
+        "status": "completed",
         "last_page": 8
     },
     "2022-08-24": {
@@ -2404,12 +2404,12 @@
         "last_page": 1
     },
     "2022-08-25": {
-        "status": "in_progress",
-        "last_page": 7
+        "status": "completed",
+        "last_page": 19
     },
     "2022-08-26": {
-        "status": "in_progress",
-        "last_page": 4
+        "status": "completed",
+        "last_page": 41
     },
     "2022-08-27": {
         "status": "completed",
@@ -2428,8 +2428,8 @@
         "last_page": 2
     },
     "2022-09-01": {
-        "status": "in_progress",
-        "last_page": 4
+        "status": "completed",
+        "last_page": 15
     },
     "2022-08-31": {
         "status": "completed",
@@ -2442,5 +2442,465 @@
     "2022-09-04": {
         "status": "completed",
         "last_page": 1
+    },
+    "2022-09-02": {
+        "status": "completed",
+        "last_page": 4
+    },
+    "2022-09-05": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-09-06": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-09-07": {
+        "status": "completed",
+        "last_page": 37
+    },
+    "2022-09-08": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-09-10": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-09-11": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-09-09": {
+        "status": "completed",
+        "last_page": 4
+    },
+    "2022-09-12": {
+        "status": "completed",
+        "last_page": 8
+    },
+    "2022-09-13": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-09-14": {
+        "status": "completed",
+        "last_page": 4
+    },
+    "2022-09-16": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-09-17": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-09-19": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-09-18": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-09-15": {
+        "status": "completed",
+        "last_page": 28
+    },
+    "2022-09-21": {
+        "status": "completed",
+        "last_page": 31
+    },
+    "2022-09-20": {
+        "status": "completed",
+        "last_page": 29
+    },
+    "2022-09-22": {
+        "status": "completed",
+        "last_page": 3
+    },
+    "2022-09-23": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-09-24": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-09-25": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-09-26": {
+        "status": "completed",
+        "last_page": 32
+    },
+    "2022-09-27": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-09-28": {
+        "status": "completed",
+        "last_page": 4
+    },
+    "2022-09-29": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-09-30": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-01": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-02": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-03": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-04": {
+        "status": "completed",
+        "last_page": 10
+    },
+    "2022-10-05": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-06": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-08": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-07": {
+        "status": "completed",
+        "last_page": 9
+    },
+    "2022-10-09": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-10": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-11": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-12": {
+        "status": "completed",
+        "last_page": 7
+    },
+    "2022-10-13": {
+        "status": "completed",
+        "last_page": 4
+    },
+    "2022-10-14": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-15": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-16": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-22": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-23": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-19": {
+        "status": "completed",
+        "last_page": 3
+    },
+    "2022-10-20": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-10-21": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-10-24": {
+        "status": "completed",
+        "last_page": 3
+    },
+    "2022-10-25": {
+        "status": "completed",
+        "last_page": 3
+    },
+    "2022-10-26": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-10-27": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-10-29": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-30": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-31": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-11-03": {
+        "status": "completed"
+    },
+    "2022-11-07": {
+        "status": "completed",
+        "last_page": 3
+    },
+    "2022-10-18": {
+        "status": "completed"
+    },
+    "2022-11-02": {
+        "status": "completed"
+    },
+    "2022-11-05": {
+        "status": "completed"
+    },
+    "2022-10-17": {
+        "status": "completed"
+    },
+    "2022-11-06": {
+        "status": "completed"
+    },
+    "2022-11-04": {
+        "status": "completed"
+    },
+    "2022-11-01": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-10-28": {
+        "status": "completed",
+        "last_page": 6
+    },
+    "2022-11-08": {
+        "status": "completed",
+        "last_page": 9
+    },
+    "2022-11-09": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-11-10": {
+        "status": "completed",
+        "last_page": 3
+    },
+    "2022-11-12": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-11-13": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-11-11": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-11-14": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-11-15": {
+        "status": "completed",
+        "last_page": 14
+    },
+    "2022-11-16": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-11-17": {
+        "status": "completed",
+        "last_page": 22
+    },
+    "2022-11-19": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-11-18": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-11-20": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-11-21": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-11-22": {
+        "status": "completed",
+        "last_page": 20
+    },
+    "2022-11-23": {
+        "status": "completed",
+        "last_page": 6
+    },
+    "2022-11-24": {
+        "status": "completed",
+        "last_page": 3
+    },
+    "2022-11-25": {
+        "status": "completed",
+        "last_page": 3
+    },
+    "2022-11-26": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-11-27": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-11-28": {
+        "status": "completed",
+        "last_page": 3
+    },
+    "2022-12-03": {
+        "status": "completed"
+    },
+    "2022-11-29": {
+        "status": "completed",
+        "last_page": 4
+    },
+    "2022-11-30": {
+        "status": "completed",
+        "last_page": 3
+    },
+    "2022-12-01": {
+        "status": "in_progress",
+        "last_page": 24
+    },
+    "2022-12-02": {
+        "status": "completed",
+        "last_page": 4
+    },
+    "2022-12-04": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-12-05": {
+        "status": "in_progress",
+        "last_page": 21
+    },
+    "2022-12-06": {
+        "status": "completed",
+        "last_page": 3
+    },
+    "2022-12-07": {
+        "status": "completed",
+        "last_page": 3
+    },
+    "2022-12-08": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-12-10": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-12-11": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-12-09": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-12-12": {
+        "status": "completed",
+        "last_page": 4
+    },
+    "2022-12-13": {
+        "status": "completed",
+        "last_page": 4
+    },
+    "2022-12-14": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-12-16": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-12-17": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-12-15": {
+        "status": "completed",
+        "last_page": 5
+    },
+    "2022-12-18": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-12-19": {
+        "status": "completed",
+        "last_page": 4
+    },
+    "2022-12-20": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-12-21": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-12-22": {
+        "status": "completed",
+        "last_page": 6
+    },
+    "2022-12-23": {
+        "status": "in_progress",
+        "last_page": 3
+    },
+    "2022-12-24": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-12-25": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "2022-12-26": {
+        "status": "in_progress",
+        "last_page": 6
+    },
+    "2022-12-27": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-12-28": {
+        "status": "completed",
+        "last_page": 2
+    },
+    "2022-12-29": {
+        "status": "in_progress",
+        "last_page": 3
     }
 }

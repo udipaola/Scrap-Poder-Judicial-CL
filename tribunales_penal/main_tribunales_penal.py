@@ -8,28 +8,53 @@ import time
 import random
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from worker_suprema import scrape_worker
-from verificacion_worker_suprema import verificacion_worker
-from utils_suprema import forzar_cierre_navegadores, quedan_procesos_navegador
+from worker_tribunales_penal import scrape_worker
+from verificacion_worker_tribunales_penal import verificacion_worker
+from utils_tribunales_penal import forzar_cierre_navegadores, quedan_procesos_navegador
 
 CHECKPOINT_FILE = 'checkpoint.json'
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
 PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"]
 
-def generar_rangos_diarios(start_date_str, end_date_str):
+# --- Solo Penal ---
+TRIBUNALES_PENAL = [
+    {'id': '6', 'nombre': 'Juzgado de Letras y Garantía de Pozo Almonte'},
+    {'id': '13', 'nombre': 'Juzgado de Letras de Tocopilla'},
+    {'id': '14', 'nombre': 'Juzgado de Letras y Garantía de María Elena'},
+    {'id': '1333', 'nombre': 'Juzgado de Letras del Trabajo de Arica'},
+    # ...agrega aquí el resto de los tribunales penales...
+]
+
+COMPETENCIA_PENAL_CONFIG = {
+    "value": "5",  # Ajusta el value si es distinto para penal
+    "selector_id": "fecTribunal",
+    "items": TRIBUNALES_PENAL,
+    "item_key_id": "tribunal_id",
+    "item_key_nombre": "tribunal_nombre"
+}
+
+def generar_tareas_penal(start_date_str, end_date_str):
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
     current_date = start_date
-    rangos = []
+    tareas = []
     while current_date <= end_date:
-        fecha_id = current_date.strftime('%Y-%m-%d')
+        fecha_id_base = current_date.strftime('%Y-%m-%d')
         fecha_formato_web = current_date.strftime('%d/%m/%Y')
-        rangos.append({
-            'id': fecha_id,
-            'fecha': fecha_formato_web
-        })
+        for item in COMPETENCIA_PENAL_CONFIG["items"]:
+            tarea_id = f"penal_{fecha_id_base}_{item['id']}"
+            tarea = {
+                'id': tarea_id,
+                'fecha': fecha_formato_web,
+                'competencia_nombre': 'Penal',
+                'competencia_value': COMPETENCIA_PENAL_CONFIG['value'],
+                'selector_id': COMPETENCIA_PENAL_CONFIG['selector_id'],
+                COMPETENCIA_PENAL_CONFIG["item_key_id"]: item['id'],
+                COMPETENCIA_PENAL_CONFIG["item_key_nombre"]: item['nombre']
+            }
+            tareas.append(tarea)
         current_date += timedelta(days=1)
-    return rangos
+    return tareas
 
 def rotar_y_verificar_ip(headless_mode):
     print("\n" + "="*50)
@@ -37,12 +62,10 @@ def rotar_y_verificar_ip(headless_mode):
     print("="*50)
     
     while True:
-        time.sleep(5)
-        
-        # Se asegura de cerrar todos los navegadores antes de rotar la IP
+        #Se asegura de cerrar todos los navegadores antes de rotar la IP
         print("[CIERRE FORZADO] Cerrando todos los navegadores...")
-        forzar_cierre_navegadores()
-        time.sleep(5)
+        forzar_cierre_navegadores() 
+        
         pais_elegido = random.choice(PAISES_NORDVPN)
         print(f"[IP ROTATION] Conectando a: {pais_elegido}")
         os.system(f'cd "{NORDVPN_PATH}" && nordvpn -c -g "{pais_elegido}"')
@@ -63,18 +86,19 @@ def rotar_y_verificar_ip(headless_mode):
             print("[IP VERIFICATION] ¡FALLO! La IP no funciona. Reintentando...")
             time.sleep(30)
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Orquestador de scraping judicial.")
+    parser = argparse.ArgumentParser(description="Orquestador de scraping judicial solo para competencia Penal.")
     parser.add_argument('--modo', choices=['diario', 'historico'], default='historico')
     parser.add_argument('--desde', default="2024-01-01")
     parser.add_argument('--hasta', default="2024-01-31")
     parser.add_argument('--procesos', type=int, default=4, help="Número MÁXIMO de procesos concurrentes.")
     parser.add_argument('--headless', action='store_true')
     parser.add_argument('--tanda_size', type=int, default=2, help="Cuántos procesos iniciar a la vez.")
-    parser.add_argument('--delay_tanda', type=int, default=15, help="Segundos de espera entre el inicio de cada tanda.")
+    parser.add_argument('--delay_tanda', type=int, default=90, help="Segundos de espera entre el inicio de cada tanda.")
     args = parser.parse_args()
 
-    tasks = generar_rangos_diarios(args.desde, args.hasta) if args.modo == 'historico' else []
+    tasks = generar_tareas_penal(args.desde, args.hasta) if args.modo == 'historico' else []
 
     manager = multiprocessing.Manager()
     lock = manager.Lock()
@@ -103,7 +127,10 @@ def main():
 
         print(f"Se lanzarán hasta {args.procesos} workers. El inicio se hará en tandas de {args.tanda_size} cada {args.delay_tanda}s.")
 
-        with multiprocessing.Pool(processes=args.procesos) as pool:
+        # 1. Creamos el pool manualmente, fuera de un bloque 'with'
+        pool = multiprocessing.Pool(processes=args.procesos)
+
+        try:
             tasks_para_pool = [(task, lock, args.headless, stop_event) for task in tareas_pendientes]
             results_async = []
             
@@ -125,36 +152,19 @@ def main():
             print("\nTodos los workers han sido encolados. Esperando a que terminen...")
             
             ip_bloqueada_detectada = False
-            retry_tasks = []
-            for idx, res in enumerate(results_async):
+            for res in results_async:
                 try:
-                    resultado = res.get(timeout=30) # Aumentamos timeout por si acaso
+                    # Usamos un timeout pequeño para no quedar esperando por un worker que ya debería haber parado
+                    resultado = res.get(timeout=30) # Aumentamos un poco el timeout
                     print(f"Resultado de un worker: {resultado}")
-
-                    # Detectamos 'RETRY' para reencolar la tarea
-                    if isinstance(resultado, str) and resultado.startswith('RETRY:'):
-                        # Extraer el id de la tarea
-                        parts = resultado.split(':')
-                        if len(parts) >= 2:
-                            retry_id = parts[1]
-                            print(f"[MAIN] Tarea {retry_id} marcada para reintento (RETRY). Se reencolará en la próxima tanda.")
-                            # Buscar el task original y agregarlo a retry_tasks
-                            for t in tareas_pendientes:
-                                if t['id'] == retry_id:
-                                    retry_tasks.append(t)
-                                    break
-                        continue
-
-                    # Ahora detectamos 'IP_BLOCKED' o 'ERROR' como fallos críticos
                     if isinstance(resultado, str) and (resultado.startswith('IP_BLOCKED') or resultado.startswith('ERROR')):
+                        print(f"¡SEÑAL DE ERROR DETECTADA ({resultado})! Activando evento de parada...")
                         ip_bloqueada_detectada = True
-                        print(f"¡SEÑAL DE FALLO CRÍTICO ({resultado}) RECIBIDA! Activando evento de parada...")
                         stop_event.set()
-                        pool.terminate() # Terminamos el pool inmediatamente
-                        break # Salimos del bucle de resultados
-
+                        pool.terminate()
+                        break 
                 except multiprocessing.TimeoutError:
-                    print("Timeout esperando resultado de un worker. Probablemente ya fue terminado por el stop_event.")
+                    print("Timeout esperando resultado de un worker. Probablemente ya fue terminado.")
                     continue
                 except Exception as e:
                     print(f"Error crítico obteniendo resultado de un worker: {e}")
@@ -163,27 +173,26 @@ def main():
                     pool.terminate()
                     break
 
-            # Esperamos a que todos los procesos del pool terminen limpiamente
+        finally:
             pool.join()
-
-            # Si hay tareas a reintentar, las agregamos al principio de la lista para la próxima ronda
-            if retry_tasks:
-                print(f"[MAIN] {len(retry_tasks)} tareas serán reintentadas en la próxima tanda.")
-                # Insertar al principio para que se prioricen
-                tasks = retry_tasks + [t for t in tasks if t not in retry_tasks]
+            pool.close()
 
             if ip_bloqueada_detectada:
                 print("\nLimpieza final: Iniciando proceso de cierre forzado de navegadores...")
+                # --- INICIO DEL BLOQUE DE CIERRE ROBUSTO ---
                 intentos = 0
                 while quedan_procesos_navegador() and intentos < 10:
                     print(f"[CIERRE FORZADO - Intento {intentos + 1}] Aún quedan procesos activos. Reintentando cierre...")
                     forzar_cierre_navegadores()
                     time.sleep(3) # Damos tiempo extra para que los procesos terminen
                     intentos += 1
+
                 if quedan_procesos_navegador():
                     print("[CIERRE FORZADO] ¡ADVERTENCIA! No se pudieron cerrar todos los procesos de navegador tras varios intentos.")
                 else:
                     print("[CIERRE FORZADO] Éxito. Todos los procesos de navegador han sido cerrados.")
+                # --- FIN DEL BLOQUE DE CIERRE ROBUSTO ---
+                
                 print("\nProceso de rotación de IP iniciado.")
                 rotar_y_verificar_ip(args.headless)
                 print("\nIP rotada. Reiniciando el ciclo de procesamiento...")
