@@ -6,178 +6,177 @@ import json
 import os
 import time
 import random
+import re
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from worker_laboral import scrape_worker
-from tribunales_laboral.verificacion_worker_laboral import verificacion_worker
-from verificacion_worker_laboral import verificacion_worker
-from utils_laboral import forzar_cierre_navegadores, quedan_procesos_navegador
+from worker_cobranza import scrape_worker
+from verificacion_worker_cobranza import verificacion_worker
+from utils_cobranza import forzar_cierre_navegadores, quedan_procesos_navegador
 
 CHECKPOINT_FILE = 'checkpoint.json'
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
 PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"]
 
-# --- Solo Laboral ---
-TRIBUNALES_LABORAL = [
-    {'id': '6', 'nombre': 'Juzgado de Letras y Garantía de Pozo Almonte'},
+
+TRIBUNALES_COBRANZA = [
+    {'id': '0', 'nombre': 'Seleccione Tribunal...'},
+    {'id': '6', 'nombre': 'Jdo. de Letras y Garantía de Pozo Almonte'},
     {'id': '13', 'nombre': 'Juzgado de Letras de Tocopilla'},
-    {'id': '14', 'nombre': 'Juzgado de Letras y Garantía de María Elena'},
-    {'id': '26', 'nombre': 'Juzgado de Letras y Garantía de Taltal'},
-    {'id': '27', 'nombre': 'Juzgado de Letras y Garantia de Chañaral'},
+    {'id': '14', 'nombre': 'Juzgado de Letras y Garantía de Maria Elena'},
+    {'id': '26', 'nombre': 'Jdo. de Letras y Garantia de Taltal'},
+    {'id': '27', 'nombre': 'Jdo. de Letras y Garantia de Chañaral'},
     {'id': '29', 'nombre': 'Juzgado de Letras de Diego de Almagro'},
-    {'id': '34', 'nombre': 'Juzgado de Letras y Garantía de Freirina'},
-    {'id': '36', 'nombre': '1° Juzgado de Letras de Vallenar'},
-    {'id': '37', 'nombre': '2° Juzgado de Letras de Vallenar'},
+    {'id': '34', 'nombre': 'Juzgado de Letras y Garantia de Freirina'},
+    {'id': '36', 'nombre': '1º Juzgado de Letras de Vallenar'},
+    {'id': '37', 'nombre': '2º Juzgado de Letras de Vallenar'},
     {'id': '46', 'nombre': 'Juzgado de Letras de Vicuña'},
     {'id': '47', 'nombre': 'Juzgado de Letras y Garantía de Andacollo'},
     {'id': '48', 'nombre': '1º Juzgado de Letras de Ovalle'},
     {'id': '49', 'nombre': '2º Juzgado de Letras de Ovalle'},
-    {'id': '50', 'nombre': '3° Juzgado de Letras de Ovalle'},
+    {'id': '50', 'nombre': '3º Juzgado de Letras de Ovalle'},
     {'id': '51', 'nombre': 'Juzgado de Letras y Garantía de Combarbalá'},
     {'id': '52', 'nombre': 'Juzgado de Letras de Illapel'},
-    {'id': '53', 'nombre': 'Juzgado de Letras y Garantía de los Vilos'},
+    {'id': '53', 'nombre': 'Juzgado de Letras y Garantia de los Vilos'},
     {'id': '83', 'nombre': '1º Juzgado de Letras de Quilpue'},
     {'id': '84', 'nombre': '2º Juzgado de Letras de Quilpue'},
-    {'id': '85', 'nombre': 'Juzgado de Letras de Villa Alemana'},
-    {'id': '86', 'nombre': 'Juzgado de Letras de Casablanca'},
-    {'id': '87', 'nombre': 'Juzgado de Letras de La Ligua'},
+    {'id': '85', 'nombre': 'Jdo. de Letras de Villa Alemana'},
+    {'id': '86', 'nombre': 'Juzgado de Letras de CasaBlanca'},
+    {'id': '87', 'nombre': 'Jdo. de Letras de La Ligua'},
     {'id': '88', 'nombre': 'Juzgado de Letras y Garantía de Petorca'},
-    {'id': '89', 'nombre': '1º Juzgado de Letras de Los Andes'},
-    {'id': '90', 'nombre': '2º Juzgado de Letras de Los Andes'},
-    {'id': '94', 'nombre': 'Juzgado de Letras y Garantía de Putaendo'},
+    {'id': '89', 'nombre': '1º Juzgado de Letras de los Andes'},
+    {'id': '90', 'nombre': '2º Juzgado de Letras de los Andes'},
+    {'id': '94', 'nombre': 'Juzgado de Letras y Garantia de Putaendo'},
     {'id': '96', 'nombre': '1º Juzgado de Letras de Quillota'},
     {'id': '97', 'nombre': '2º Juzgado de Letras de Quillota'},
-    {'id': '98', 'nombre': 'Juzgado de Letras de La Calera'},
+    {'id': '98', 'nombre': 'Jdo. de Letras de La Calera'},
     {'id': '99', 'nombre': 'Juzgado de Letras de Limache'},
-    {'id': '101', 'nombre': '1° Juzgado de Letras de San Antonio'},
-    {'id': '102', 'nombre': '2° Juzgado de Letras de San Antonio'},
+    {'id': '100', 'nombre': 'Otros tribunales'},
+    {'id': '101', 'nombre': '1º Juzgado de Letras de San Antonio'},
+    {'id': '102', 'nombre': '2º Juzgado de Letras de San Antonio'},
     {'id': '103', 'nombre': 'Juzgado de Letras y Garantía de Isla de Pascua'},
-    {'id': '111', 'nombre': '1º Juzgado de Letras de Rengo'},
-    {'id': '113', 'nombre': 'Juzgado de Letras de San Vicente'},
-    {'id': '114', 'nombre': '1º Juzgado de Letras y Garantia de Peumo'},
-    {'id': '115', 'nombre': '1º Juzgado de Letras de San Fernando'},
-    {'id': '116', 'nombre': '2º Juzgado de Letras de San Fernando'},
-    {'id': '117', 'nombre': '1º Juzgado de Letras de Santa Cruz'},
-    {'id': '119', 'nombre': 'Juzgado de Letras y Garantia de Pichilemu'},
-    {'id': '126', 'nombre': 'Juzgado de Letras de Constitución'},
+    {'id': '111', 'nombre': 'Jdo. de Letras de Rengo'},
+    {'id': '113', 'nombre': 'Jdo. de Letras de San Vicente'},
+    {'id': '114', 'nombre': 'Jdo. de Letras y Garantia de Peumo'},
+    {'id': '115', 'nombre': '1°Jdo. de Letras de San Fernando'},
+    {'id': '116', 'nombre': '2°Jdo. de Letras de San Fernando'},
+    {'id': '117', 'nombre': 'Jdo. de Letras de Santa Cruz'},
+    {'id': '119', 'nombre': 'Jdo. de Letras y Garantia de Pichilemu'},
+    {'id': '126', 'nombre': 'Jdo. de Letras de Constitución'},
     {'id': '127', 'nombre': 'Juzgado de Letras y Garantía de Curepto'},
-    {'id': '132', 'nombre': 'Juzgado de Letras y Garantía de Licantén'},
+    {'id': '132', 'nombre': 'Juzgado de Letras y Garantía de Licanten'},
     {'id': '133', 'nombre': 'Juzgado de Letras de Molina'},
-    {'id': '135', 'nombre': '1° Juzgado de Letras de Linares'},
-    {'id': '136', 'nombre': '2° Juzgado de Letras de Linares'},
+    {'id': '135', 'nombre': '1º Juzgado de Letras de Linares'},
+    {'id': '136', 'nombre': '2º Juzgado de Letras de Linares'},
     {'id': '138', 'nombre': 'Juzgado de Letras de San Javier'},
     {'id': '139', 'nombre': 'Juzgado de Letras de Cauquenes'},
     {'id': '140', 'nombre': 'Juzgado de Letras y Garantía de Chanco'},
     {'id': '141', 'nombre': 'Juzgado de Letras de Parral'},
-    {'id': '147', 'nombre': '1° Juzgado de Letras de San Carlos'},
+    {'id': '147', 'nombre': '1º Juzgado de Letras de San Carlos'},
     {'id': '149', 'nombre': 'Juzgado de Letras de Yungay'},
     {'id': '150', 'nombre': 'Juzgado de Letras y Garantía de Bulnes'},
     {'id': '151', 'nombre': 'Juzgado de Letras y Garantía de Coelemu'},
-    {'id': '152', 'nombre': 'Juzgado de Letras y Garantía de Quirihue'},
-    {'id': '157', 'nombre': 'Juzgado de Letras y Garantía de Mulchén'},
+    {'id': '152', 'nombre': 'Juzgado de Letras y Garantia de Quirihue'},
+    {'id': '157', 'nombre': 'Juzgado de Letras y Garantía de Mulchen'},
     {'id': '158', 'nombre': 'Juzgado de Letras y Garantía de Nacimiento'},
     {'id': '159', 'nombre': 'Juzgado de Letras y Garantía de Laja'},
     {'id': '160', 'nombre': 'Juzgado de Letras y Garantía de Yumbel'},
-    {'id': '187', 'nombre': 'Juzgado de Letras de Tomé'},
+    {'id': '187', 'nombre': 'Juzgado de Letras de Tome'},
     {'id': '188', 'nombre': 'Juzgado de Letras y Garantía de Florida'},
     {'id': '189', 'nombre': 'Juzgado de Letras y Garantía de Santa Juana'},
     {'id': '190', 'nombre': 'Juzgado de Letras y Garantía de Lota'},
-    {'id': '191', 'nombre': '1er Juzgado de Letras de Coronel'},
-    {'id': '192', 'nombre': '2do Juzgado de Letras de Coronel'},
+    {'id': '9002', 'nombre': '1er Jdo. Cob. Laboral de Prueba'},
+    {'id': '9003', 'nombre': '2do Jdo. Cob. Laboral de Prueba'},
+    {'id': '191', 'nombre': '1° Juzgado de Letras de Coronel'},
+    {'id': '192', 'nombre': '2° Juzgado de Letras de Coronel'},
     {'id': '193', 'nombre': 'Juzgado de Letras y Garantía de Lebu'},
     {'id': '194', 'nombre': 'Juzgado de Letras de Arauco'},
     {'id': '195', 'nombre': 'Juzgado de Letras y Garantía de Curanilahue'},
     {'id': '196', 'nombre': 'Juzgado de Letras de Cañete'},
-    {'id': '204', 'nombre': '1º Juzgado de Letras de Angol'},
-    {'id': '206', 'nombre': 'Juzgado de Letras y Garantía de Collipulli'},
+    {'id': '204', 'nombre': '1°Jdo. de Letras de angol'},
+    {'id': '206', 'nombre': 'Juzgado de Letras y Garantia de Collipulli'},
     {'id': '207', 'nombre': 'Juzgado de Letras y Garantía de Traiguen'},
     {'id': '208', 'nombre': 'Juzgado de Letras de Victoria'},
     {'id': '209', 'nombre': 'Juzgado de Letras y Garantía de Curacautín'},
     {'id': '210', 'nombre': 'Juzgado de Letras de Loncoche'},
-    {'id': '211', 'nombre': 'Juzgado de Letras de Pitrufquén'},
+    {'id': '211', 'nombre': 'Juzgado de Letras de Pitrufquen'},
     {'id': '212', 'nombre': 'Juzgado de Letras de Villarrica'},
     {'id': '213', 'nombre': 'Juzgado de Letras de Nueva Imperial'},
-    {'id': '214', 'nombre': 'Juzgado de Letras y Garantía de Pucón'},
+    {'id': '214', 'nombre': 'Juzgado de Letras y Garantia de Pucón'},
     {'id': '215', 'nombre': 'Juzgado de Letras de Lautaro'},
     {'id': '216', 'nombre': 'Juzgado de Letras y Garantía de Carahue'},
-    {'id': '222', 'nombre': 'Juzgado de Letras de Mariquina'},
-    {'id': '223', 'nombre': 'Juzgado de Letras y Garantía de Paillaco'},
+    {'id': '222', 'nombre': 'Jdo. de Letras de Mariquina'},
+    {'id': '223', 'nombre': 'Juzgado de Letras y Garantia de Paillaco'},
     {'id': '224', 'nombre': 'Juzgado de Letras de Los Lagos'},
-    {'id': '225', 'nombre': 'Juzgado de Letras y Garantía de Panguipulli'},
-    {'id': '226', 'nombre': 'Juzgado de Letras y Garantía de La Unión'},
-    {'id': '227', 'nombre': 'Juzgado de Letras y Garantía de Río Bueno'},
+    {'id': '225', 'nombre': 'Juzgado de Letras y Garantia de Panguipulli'},
+    {'id': '226', 'nombre': 'Jdo. de Letras y Garantía de La Unión'},
+    {'id': '227', 'nombre': 'Juzgado de Letras y Garantia de Rio Bueno'},
     {'id': '238', 'nombre': '1º Juzgado de Letras de Puerto Varas'},
     {'id': '240', 'nombre': 'Juzgado de Letras y Garantía de Calbuco'},
-    {'id': '241', 'nombre': 'Juzgado de Letras y Garantía de Maullín'},
+    {'id': '241', 'nombre': 'Juzgado de Letras y Garantía de Maullin'},
     {'id': '243', 'nombre': 'Juzgado de Letras de Ancud'},
     {'id': '244', 'nombre': 'Juzgado de Letras y Garantía de Achao'},
-    {'id': '245', 'nombre': 'Juzgado de Letras y Garantía de Chaitén'},
-    {'id': '248', 'nombre': 'Juzgado de Letras y Garantía de Aysén'},
-    {'id': '249', 'nombre': 'Juzgado de Letras y Garantía de Chile Chico'},
-    {'id': '250', 'nombre': 'Juzgado de Letras y Garantía de Cochrane'},
-    {'id': '257', 'nombre': 'Juzgado de Letras y Garantía de Puerto Natales'},
-    {'id': '258', 'nombre': 'Juzgado de Letras y Garantía de Porvenir'},
+    {'id': '245', 'nombre': 'Juzgado de Letras y Garantia de Chaiten'},
+    {'id': '248', 'nombre': 'Jdo. de Letras de Letras y Garantia de Aysen'},
+    {'id': '249', 'nombre': 'Juzgado de Letras y Garantia de Chile Chico'},
+    {'id': '250', 'nombre': 'Juzgado de Letras y Garantia de Cochrane'},
+    {'id': '257', 'nombre': 'Jdo. de Letras y Garantia de Puerto Natales'},
+    {'id': '258', 'nombre': 'Juzgado de Letras y Garantia de Porvenir'},
     {'id': '373', 'nombre': '1° Juzgado de Letras de Talagante'},
-    {'id': '374', 'nombre': '2do Juzgado de Letras de Talagante'},
-    {'id': '375', 'nombre': '1er Juzgado de Letras de Melipilla'},
-    {'id': '377', 'nombre': '1er Juzgado de Letras de Buin'},
-    {'id': '378', 'nombre': '2do Juzgado de Letras de Buin'},
-    {'id': '385', 'nombre': 'Juzgado de Letras y Garantía de Santa Bárbara'},
-    {'id': '386', 'nombre': 'Juzgado de Letras y Garantía de Caldera'},
-    {'id': '387', 'nombre': 'Juzgado de Letras de Colina'},
+    {'id': '374', 'nombre': '2° Juzgado de Letras de Talagante'},
+    {'id': '375', 'nombre': '1° Juzgado de Letras de Melipilla'},
+    {'id': '377', 'nombre': '1° Juzgado de Letras de Buin'},
+    {'id': '378', 'nombre': '2° Juzgado de Letras de Buin'},
+    {'id': '385', 'nombre': 'Juzgado de Letras y Garantía de Santa Barbara'},
+    {'id': '386', 'nombre': 'Juzgado de Letras y Garantia de Caldera'},
+    {'id': '387', 'nombre': 'Jdo. de Letras de Colina'},
     {'id': '388', 'nombre': 'Juzgado de Letras de Peñaflor'},
-    {'id': '659', 'nombre': 'Juzgado de Letras y Garantía de Los Muermos'},
-    {'id': '660', 'nombre': 'Juzgado de Letras y Garantía de Quintero'},
-    {'id': '946', 'nombre': 'Juzgado de Letras y Garantía de Toltén'},
-    {'id': '947', 'nombre': 'Juzgado de Letras y Garantía de Purén'},
-    {'id': '996', 'nombre': 'Juzgado de Letras y Garantía de Puerto Cisnes'},
+    {'id': '659', 'nombre': 'Juzgado de Letras y Garantia de Los Muermo'},
+    {'id': '660', 'nombre': 'Juzgado de Letras y Garantia de Quintero'},
+    {'id': '946', 'nombre': 'Juzgado de Letras y Garantia de Tolten'},
+    {'id': '947', 'nombre': 'Juzgado de Letras y Garantia de Puren'},
+    {'id': '996', 'nombre': 'Juzgado de Letras y Garantia de Puerto Cisne'},
     {'id': '1013', 'nombre': 'Juzgado de Letras y Garantía de Hualaihue'},
-    {'id': '1150', 'nombre': 'Juzgado de Letras y Garantia de Litueche'},
-    {'id': '1151', 'nombre': 'Juzgado de Letras y Garantia de Peralillo'},
+    {'id': '1150', 'nombre': 'Jdo. de Letras y Garantia de Litueche'},
+    {'id': '1151', 'nombre': 'Jdo. de Letras y Garantia de Peralillo'},
     {'id': '1152', 'nombre': 'Juzgado de Letras y Garantía de Cabrero'},
-    {'id': '1333', 'nombre': 'Juzgado de Letras del Trabajo de Arica'},
-    {'id': '1334', 'nombre': 'Juzgado de Letras del Trabajo de Iquique'},
-    {'id': '1335', 'nombre': 'Juzgado de Letras del Trabajo de Antofagasta'},
-    {'id': '1336', 'nombre': 'Juzgado de Letras del Trabajo de Copiapó'},
-    {'id': '1337', 'nombre': 'Juzgado de Letras del Trabajo de La Serena'},
-    {'id': '1338', 'nombre': 'Juzgado de Letras del Trabajo de Valparaíso'},
-    {'id': '1339', 'nombre': 'Juzgado de Letras del Trabajo de Rancagua'},
-    {'id': '1340', 'nombre': 'Juzgado de Letras del Trabajo de Curicó'},
-    {'id': '1341', 'nombre': 'Juzgado de Letras del Trabajo de Talca'},
-    {'id': '1342', 'nombre': 'Juzgado de Letras del Trabajo de Chillán'},
-    {'id': '1343', 'nombre': 'Juzgado de Letras del Trabajo de Concepción'},
-    {'id': '1344', 'nombre': 'Juzgado de Letras del Trabajo de Temuco'},
-    {'id': '1345', 'nombre': 'Juzgado de Letras del Trabajo de Valdivia'},
-    {'id': '1346', 'nombre': 'Juzgado de Letras del Trabajo de Puerto Montt'},
-    {'id': '1347', 'nombre': 'Juzgado de Letras del Trabajo de Punta Arenas'},
-    {'id': '1348', 'nombre': '1º Juzgado de Letras del Trabajo de Santiago'},
-    {'id': '1349', 'nombre': '2º Juzgado de Letras del Trabajo de Santiago'},
-    {'id': '1351', 'nombre': 'Juzgado de Letras del Trabajo de San Miguel'},
-    {'id': '1352', 'nombre': 'Juzgado de Letras del Trabajo de San Bernardo'},
-    {'id': '1357', 'nombre': 'Juzgado de Letras del Trabajo de Calama'},
-    {'id': '1358', 'nombre': 'Juzgado de Letras del Trabajo de San Felipe'},
-    {'id': '1359', 'nombre': 'Juzgado de Letras del Trabajo de Los Angeles'},
-    {'id': '1360', 'nombre': 'Juzgado de Letras del Trabajo de Osorno'},
-    {'id': '1361', 'nombre': 'Juzgado de Letras del Trabajo de Castro'},
-    {'id': '1362', 'nombre': 'Juzgado de Letras del Trabajo de Coyhaique'},
-    {'id': '1363', 'nombre': 'Juzgado de Letras del Trabajo de Puente Alto'},
-    {'id': '1500', 'nombre': 'Juzgado de Letras y Garantía de Alto Hospicio'},
-    {'id': '1501', 'nombre': 'Juzgado de Letras de Mejillones'},
-    {'id': '1502', 'nombre': 'Juzgado de Letras de Cabo de Hornos'},
-    {'id': '9003', 'nombre': 'Portal'},
-    {'id': '9005', 'nombre': 'Juzgado de Prueba 4º'},
-    {'id': '9006', 'nombre': 'Juzgado de Prueba 5°'},
+    {'id': '1329', 'nombre': 'Jdo. Cob. Laboral y Previsional de Santiago'},
+    {'id': '1330', 'nombre': 'Jdo. Cob. Laboral y Previsional de San Miguel'},
+    {'id': '1331', 'nombre': 'Jdo. Cob. Laboral y Previsional de Valparaíso'},
+    {'id': '1332', 'nombre': 'Jdo. Cob. Laboral y Previsional de Concepción'},
+    {'id': '1333', 'nombre': 'Jdo. de Letras del Trabajo de arica'},
+    {'id': '1334', 'nombre': 'Jdo. de Letras del Trabajo de Iquique'},
+    {'id': '1335', 'nombre': 'Jdo. de Letras del Trabajo de Antofagasta'},
+    {'id': '1336', 'nombre': 'Jdo. de Letras del Trabajo de Copiapo'},
+    {'id': '1337', 'nombre': 'Jdo. de Letras del Trabajo de La Serena'},
+    {'id': '1339', 'nombre': 'Jdo. de Letras del Trabajo de Rancagua'},
+    {'id': '1340', 'nombre': 'Jdo. de Letras del Trabajo de Curicó'},
+    {'id': '1341', 'nombre': 'Jdo. de Letras del Trabajo de Talca'},
+    {'id': '1342', 'nombre': 'Juzgado de Letras del Trabajo de Chillan'},
+    {'id': '1344', 'nombre': 'Jdo. de Letras del Trabajo de Temuco'},
+    {'id': '1345', 'nombre': 'Jdo. de Letras del Trabajo de Valdivia'},
+    {'id': '1346', 'nombre': 'Jdo. de Letras del Trabajo de Puerto Montt'},
+    {'id': '1347', 'nombre': 'Jdo. de Letras del Trabajo Punta arenas'},
+    {'id': '1352', 'nombre': 'Jdo. de Letras del Trabajo de San Bernardo'},
+    {'id': '1357', 'nombre': 'Jdo. de Letras del Trabajo de Calama'},
+    {'id': '1358', 'nombre': 'Jdo. de Letras del Trabajo de San Felipe'},
+    {'id': '1359', 'nombre': 'Jdo. de Letras del Trabajo de Los Ángeles'},
+    {'id': '1360', 'nombre': 'Jdo. de Letras del Trabajo de Osorno'},
+    {'id': '1361', 'nombre': 'Jdo. de Letras del Trabajo de Castro'},
+    {'id': '1362', 'nombre': 'Jdo. de Letras del Trabajo de Coyhaique'},
+    {'id': '1363', 'nombre': 'Jdo. de Letras del Trabajo de Puente Alto'},
+    {'id': '1500', 'nombre': 'Jdo. de Letras de Alto Hospicio'},
+    {'id': '1501', 'nombre': 'Jdo. de Letras y Garantía de Mejillones'},
+    {'id': '1502', 'nombre': 'Jdo. de Letras y Garantía de Puerto Williams'},
 ]
-
-COMPETENCIA_LABORAL_CONFIG = {
-    "value": "4",  # Ajusta el value si es distinto para laboral
+COMPETENCIA_COBRANZA_CONFIG = {
+    "value": "6",  # Ajusta el value si es distinto para Cobranza
     "selector_id": "fecTribunal",
-    "items": TRIBUNALES_LABORAL,
+    "items": TRIBUNALES_COBRANZA,
     "item_key_id": "tribunal_id",
     "item_key_nombre": "tribunal_nombre"
 }
 
-def generar_tareas_laboral(start_date_str, end_date_str):
+def generar_tareas_cobranza(start_date_str, end_date_str):
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
     current_date = start_date
@@ -185,16 +184,16 @@ def generar_tareas_laboral(start_date_str, end_date_str):
     while current_date <= end_date:
         fecha_id_base = current_date.strftime('%Y-%m-%d')
         fecha_formato_web = current_date.strftime('%d/%m/%Y')
-        for item in COMPETENCIA_LABORAL_CONFIG["items"]:
-            tarea_id = f"laboral_{fecha_id_base}_{item['id']}"
+        for item in COMPETENCIA_COBRANZA_CONFIG["items"]:
+            tarea_id = f"cobranza_{fecha_id_base}_{item['id']}"
             tarea = {
                 'id': tarea_id,
                 'fecha': fecha_formato_web,
-                'competencia_nombre': 'Laboral',
-                'competencia_value': COMPETENCIA_LABORAL_CONFIG['value'],
-                'selector_id': COMPETENCIA_LABORAL_CONFIG['selector_id'],
-                COMPETENCIA_LABORAL_CONFIG["item_key_id"]: item['id'],
-                COMPETENCIA_LABORAL_CONFIG["item_key_nombre"]: item['nombre']
+                'competencia_nombre': 'Cobranza',
+                'competencia_value': COMPETENCIA_COBRANZA_CONFIG['value'],
+                'selector_id': COMPETENCIA_COBRANZA_CONFIG['selector_id'],
+                COMPETENCIA_COBRANZA_CONFIG["item_key_id"]: item['id'],
+                COMPETENCIA_COBRANZA_CONFIG["item_key_nombre"]: item['nombre']
             }
             tareas.append(tarea)
         current_date += timedelta(days=1)
@@ -232,7 +231,7 @@ def rotar_y_verificar_ip(headless_mode):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Orquestador de scraping judicial solo para competencia Laboral.")
+    parser = argparse.ArgumentParser(description="Orquestador de scraping judicial solo para competencia Cobranza.")
     parser.add_argument('--modo', choices=['diario', 'historico'], default='historico')
     parser.add_argument('--desde', default="2024-01-01")
     parser.add_argument('--hasta', default="2024-01-31")
@@ -242,7 +241,7 @@ def main():
     parser.add_argument('--delay_tanda', type=int, default=90, help="Segundos de espera entre el inicio de cada tanda.")
     args = parser.parse_args()
 
-    tasks = generar_tareas_laboral(args.desde, args.hasta) if args.modo == 'historico' else []
+    tasks = generar_tareas_cobranza(args.desde, args.hasta) if args.modo == 'historico' else []
 
     manager = multiprocessing.Manager()
     lock = manager.Lock()

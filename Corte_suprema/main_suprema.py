@@ -48,7 +48,7 @@ def rotar_y_verificar_ip(headless_mode):
         os.system(f'cd "{NORDVPN_PATH}" && nordvpn -c -g "{pais_elegido}"')
         
         print("[IP ROTATION] Esperando 40s para estabilizar conexión...")
-        time.sleep(40)
+        time.sleep(4)
 
         print("[IP VERIFICATION] Lanzando worker de prueba...")
         with multiprocessing.Pool(processes=1) as verification_pool:
