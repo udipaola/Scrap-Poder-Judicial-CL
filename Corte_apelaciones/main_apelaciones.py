@@ -8,9 +8,9 @@ import time
 import random
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from worker import scrape_worker
+from worker_apelaciones import scrape_worker
 from verificacion_worker_apelaciones import verificacion_worker
-from utils import forzar_cierre_navegadores, quedan_procesos_navegador
+from utils_apelaciones import forzar_cierre_navegadores, quedan_procesos_navegador
 
 CHECKPOINT_FILE = 'checkpoint.json'
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
