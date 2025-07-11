@@ -44,7 +44,7 @@ def scrape_worker(task_info):
         options.add_argument('--log-level=3')
         options.add_experimental_option('excludeSwitches', ['enable-logging'])
         
-        #options.add_argument("--window-position=-2000,0")
+        options.add_argument("--window-position=-2000,0")
         if headless_mode:
             options.add_argument("--headless")
 
