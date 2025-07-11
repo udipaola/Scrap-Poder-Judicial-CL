@@ -268,31 +268,37 @@ COMPETENCIAS_CONFIG = {
 
 # --- FIN: Configuración Centralizada ---
 
-def generar_tareas(start_date_str, end_date_str, es_tribunal=False):
+def generar_tareas(start_date_str, end_date_str, modulo_nombre="tribunales_civil"):
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
     current_date = start_date
     tareas = []
 
-    incremento = timedelta(days=7) if es_tribunal else timedelta(days=1)
+    # Determinar incremento: semanal para tribunales_*, diario para otros
+    es_tribunales = modulo_nombre.startswith('tribunales_')
+    incremento = timedelta(weeks=1) if es_tribunales else timedelta(days=1)
 
     while current_date <= end_date:
         fecha_inicio_web = current_date.strftime('%d/%m/%Y')
         fecha_id_base = current_date.strftime('%Y-%m-%d')
         
-        # Determinar el fin del rango
-        if es_tribunal:
-            fin_rango = min(current_date + timedelta(days=6), end_date)
-            fecha_fin_web = fin_rango.strftime('%d/%m/%Y')
+        if es_tribunales:
+            # Para módulos tribunales: rango semanal
+            fecha_hasta = min(current_date + timedelta(days=6), end_date)
+            fecha_desde_str = current_date.strftime('%d/%m/%Y')
+            fecha_hasta_str = fecha_hasta.strftime('%d/%m/%Y')
+            fecha_id_base = f"{current_date.strftime('%Y-%m-%d')}_to_{fecha_hasta.strftime('%Y-%m-%d')}"
         else:
-            fecha_fin_web = fecha_inicio_web
+            # Para otros módulos: día individual
+            fecha_desde_str = fecha_hasta_str = current_date.strftime('%d/%m/%Y')
+            fecha_id_base = current_date.strftime('%Y-%m-%d')
 
         for comp_nombre, comp_data in COMPETENCIAS_CONFIG.items():
             for item in comp_data["items"]:
                 tarea_id = f"{comp_nombre.lower()}_{fecha_id_base}_{item['id']}"
                 tarea = {
                     'id': tarea_id, 'ruta_salida': RUTA_SALIDA,
-                    'fecha_desde': fecha_inicio_web, 'fecha_hasta': fecha_fin_web,
+                    'fecha_desde_str': fecha_desde_str, 'fecha_hasta_str': fecha_hasta_str,
                     'competencia_nombre': comp_nombre, 'competencia_value': comp_data['value'],
                     'selector_id': comp_data['selector_id'],
                     comp_data["item_key_id"]: item['id'], comp_data["item_key_nombre"]: item['nombre']
@@ -344,8 +350,7 @@ def main():
     parser.add_argument('--delay_tanda', type=int, default=90, help="Segundos de espera entre el inicio de cada tanda.")
     args = parser.parse_args()
 
-    es_modulo_tribunal = 'tribunales' in NOMBRE_MODULO
-    tasks = generar_tareas(args.desde, args.hasta, es_tribunal=es_modulo_tribunal) if args.modo == 'historico' else []
+    tasks = generar_tareas(args.desde, args.hasta, "tribunales_civil") if args.modo == 'historico' else []
 
     manager = multiprocessing.Manager()
     lock = manager.Lock()

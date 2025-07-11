@@ -48,7 +48,7 @@ def scrape_worker(task_info):
         options.add_argument('--log-level=3')
         options.add_experimental_option('excludeSwitches', ['enable-logging'])
         
-        #options.add_argument("--window-position=-2000,0")
+        options.add_argument("--window-position=-2000,0")
         if headless_mode:
             options.add_argument("--headless")
 
@@ -178,28 +178,37 @@ def scrape_worker(task_info):
                     except Exception as e_click:
                         print(f"[{task_id}] Error al hacer click en la lupa: {e_click}")
                         continue
-                    # Esperar modal y tab de litigantes
+                    # Esperar modal y verificar si la causa está reservada
                     try:
-                        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#modalDetalleCivil")))
-                        # Click en tab de litigantes si existe
-                        try:
-                            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[href="#litigantesCiv"]'))).click()
-                        except Exception:
-                            pass  # Puede estar ya activo
-                        # Extraer tabla de litigantes
-                        tabla_litigantes = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#litigantesCiv table")))
-                        filas_lit = tabla_litigantes.find_elements(By.XPATH, ".//tbody/tr")
-                        for fila_lit in filas_lit:
-                            celdas_lit = fila_lit.find_elements(By.TAG_NAME, "td")
-                            if len(celdas_lit) < 4:
-                                continue
-                            registros_pagina.append({
-                                "NOMBRE": celdas_lit[3].text,
-                                "DOCUMENTO": celdas_lit[1].text,
-                                "CARGO": celdas_lit[0].text,
-                                "INSTITUCION": tribunal,
-                                "OBSERVACIONES": observaciones
-                            })
+                        modal = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#modalDetalleCivil")))
+                        
+                        # Verificar si la causa está reservada
+                        if "causa se encuentra reservada" not in modal.text:
+                            # Click en tab de litigantes si existe
+                            try:
+                                wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[href="#litigantesCiv"]'))).click()
+                            except Exception:
+                                pass  # Puede estar ya activo
+                            
+                            # Extraer tabla de litigantes
+                            try:
+                                tabla_litigantes = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#litigantesCiv table")))
+                                filas_lit = tabla_litigantes.find_elements(By.XPATH, ".//tbody/tr")
+                                for fila_lit in filas_lit:
+                                    celdas_lit = fila_lit.find_elements(By.TAG_NAME, "td")
+                                    if len(celdas_lit) < 4:
+                                        continue
+                                    registros_pagina.append({
+                                        "NOMBRE": celdas_lit[3].text,
+                                        "DOCUMENTO": celdas_lit[1].text,
+                                        "CARGO": celdas_lit[0].text,
+                                        "INSTITUCION": tribunal,
+                                        "OBSERVACIONES": observaciones
+                                    })
+                            except Exception as e_litigantes:
+                                print(f"[{task_id}] Error extrayendo tabla de litigantes: {e_litigantes}")
+                        else:
+                            print(f"[{task_id}] Causa reservada detectada - saltando extracción de litigantes")
                     except Exception as e_modal:
                         print(f"[{task_id}] Error extrayendo litigantes: {e_modal}")
                     finally:

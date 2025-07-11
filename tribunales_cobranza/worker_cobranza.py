@@ -24,7 +24,6 @@ import tempfile
 def scrape_worker(task_info):
     task, lock, headless_mode, stop_event = task_info
     task_id = task['id']
-    #user_data_dir = tempfile.mkdtemp() # Crea un directorio temporal único
 
     # --- Verificación inicial del evento de parada ---
     if stop_event.is_set():
@@ -32,7 +31,6 @@ def scrape_worker(task_info):
         return f"STOPPED_BY_EVENT:{task_id}"
 
     options = webdriver.ChromeOptions()
-    #options.add_argument(f"--user-data-dir={user_data_dir}") # Usa el directorio único
     options.add_argument('--disable-blink-features=AutomationControlled')
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)

@@ -21,7 +21,6 @@ PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"
 
 
 TRIBUNALES_COBRANZA = [
-    {'id': '0', 'nombre': 'Seleccione Tribunal...'},
     {'id': '6', 'nombre': 'Jdo. de Letras y Garantía de Pozo Almonte'},
     {'id': '13', 'nombre': 'Juzgado de Letras de Tocopilla'},
     {'id': '14', 'nombre': 'Juzgado de Letras y Garantía de Maria Elena'},
@@ -178,7 +177,7 @@ COMPETENCIAS_CONFIG = {
     "item_key_nombre": "tribunal_nombre"
 }
 
-def generar_tareas(start_date_str, end_date_str, module_name="cobranza"):
+def generar_tareas(start_date_str, end_date_str, module_name="tribunales_cobranza"):
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
     tareas = []
@@ -275,7 +274,7 @@ def main():
     parser.add_argument('--delay_tanda', type=int, default=90, help="Segundos de espera entre el inicio de cada tanda.")
     args = parser.parse_args()
 
-    tasks = generar_tareas(args.desde, args.hasta, "cobranza") if args.modo == 'historico' else []
+    tasks = generar_tareas(args.desde, args.hasta, "tribunales_cobranza") if args.modo == 'historico' else []
 
     manager = multiprocessing.Manager()
     lock = manager.Lock()
