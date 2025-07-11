@@ -32,19 +32,22 @@ def scrape_worker(task_info):
         print(f"[{task_id}] Evento de parada activado. El worker no se iniciará.")
         return f"STOPPED_BY_EVENT:{task_id}"
 
-    options = webdriver.ChromeOptions()
-    options.add_argument('--disable-blink-features=AutomationControlled')
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
-    options.add_argument('--log-level=3')
-    options.add_experimental_option('excludeSwitches', ['enable-logging'])
-    
-    options.add_argument("--window-position=-2000,0")
-    if headless_mode:
-        options.add_argument("--headless")
-
+    profile_path = None
     driver = None
     try:
+        profile_path = os.path.join(tempfile.gettempdir(), f"pjud_profile_{task_id}")
+        options = webdriver.ChromeOptions()
+        options.add_argument(f"--user-data-dir={profile_path}")
+        options.add_argument('--disable-blink-features=AutomationControlled')
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+        options.add_argument('--log-level=3')
+        options.add_experimental_option('excludeSwitches', ['enable-logging'])
+        
+        options.add_argument("--window-position=-2000,0")
+        if headless_mode:
+            options.add_argument("--headless")
+
         driver = webdriver.Chrome(options=options)
         driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
             'source': "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
@@ -275,10 +278,10 @@ def scrape_worker(task_info):
             return f"STOPPED:{task_id}"
 
     except Exception as e:
-        error_message = str(e).split('\n')[0]
-        print(f"Error grave en worker {task_id}: {type(e).__name__} - {error_message}")
-        stop_event.set()
-        return f"ERROR:{task_id}"
+        print(f"[{task_id}] ERROR INESPERADO en el worker: {e}")
+        # Considerar si se debe señalar el evento de parada en caso de errores críticos
+        # stop_event.set()
+        return f"UNEXPECTED_ERROR:{task_id}"
     finally:
         if driver:
             driver.quit()

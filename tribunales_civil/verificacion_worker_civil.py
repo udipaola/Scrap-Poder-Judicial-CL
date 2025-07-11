@@ -1,6 +1,9 @@
 # Archivo: verificacion_worker.py
 
 import time
+import os
+import tempfile
+import uuid
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -18,9 +21,12 @@ def verificacion_worker(task):
 
     for intento in range(MAX_REINTENTOS_VERIFICACION):
         print(f"[VERIFICADOR - Intento {intento + 1}/{MAX_REINTENTOS_VERIFICACION}] Iniciando...")
+        profile_path = None
         driver = None
         try:
+            profile_path = os.path.join(tempfile.gettempdir(), f"pjud_verification_profile_{uuid.uuid4()}")
             options = webdriver.ChromeOptions()
+            options.add_argument(f"--user-data-dir={profile_path}")
             options.add_argument('--disable-blink-features=AutomationControlled')
             options.add_experimental_option("excludeSwitches", ["enable-automation"])
             options.add_experimental_option('useAutomationExtension', False)
@@ -52,18 +58,20 @@ def verificacion_worker(task):
             short_wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href="#BusFecha"]')))
             
             print(f"[VERIFICADOR - Intento {intento + 1}] ¡ÉXITO! Acceso verificado.")
-            if driver:
-                driver.quit()
             return True # Si todo va bien, retornamos True y salimos de la función
 
         except Exception as e:
             print(f"[VERIFICADOR - Intento {intento + 1}] Fallo: {str(e)[:100]}...")
-            if driver:
-                driver.quit()
             if intento < MAX_REINTENTOS_VERIFICACION - 1:
                 print("Reintentando en 5 segundos...")
                 time.sleep(5)
-            continue # Pasamos a la siguiente iteración del bucle
+        finally:
+            if driver:
+                driver.quit()
+
+    # Si el bucle termina sin haber retornado True, es que todos los intentos fallaron
+    print("[VERIFICADOR] Todos los intentos de verificación han fallado.")
+    return False
 
     # Si el bucle termina sin haber retornado True, es que todos los intentos fallaron
     print("[VERIFICADOR] Todos los intentos de verificación han fallado.")
