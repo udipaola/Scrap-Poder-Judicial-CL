@@ -7,6 +7,10 @@ import os
 import time
 import random
 import re
+import shutil
+import glob
+import tempfile
+import logging
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from worker_cobranza import scrape_worker
@@ -19,6 +23,35 @@ CHECKPOINT_FILE = os.path.join(RUTA_SALIDA, 'checkpoint_tribunales_cobranza.json
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
 PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"]
 
+def limpiar_perfiles_antiguos():
+    """Busca y elimina todos los directorios de perfiles de Chrome de ejecuciones anteriores."""
+    print("--- Iniciando limpieza de perfiles de navegador antiguos... ---")
+    temp_dir = tempfile.gettempdir()
+    
+    # Patrones para encontrar todos los perfiles relevantes
+    patrones = [
+        os.path.join(temp_dir, "pjud_profile_*"),
+        os.path.join(temp_dir, "pjud_verification_profile_*")
+    ]
+    
+    perfiles_a_borrar = []
+    for patron in patrones:
+        perfiles_a_borrar.extend(glob.glob(patron))
+
+    if not perfiles_a_borrar:
+        print("--- No se encontraron perfiles antiguos para limpiar. ---")
+        return
+
+    borrados = 0
+    for perfil in perfiles_a_borrar:
+        try:
+            shutil.rmtree(perfil)
+            borrados += 1
+        except Exception as e:
+            # Usar print o logging.warning si está configurado
+            print(f"ADVERTENCIA: No se pudo borrar el perfil huérfano '{perfil}'. Causa: {e}")
+            
+    print(f"--- Limpieza finalizada. Se eliminaron {borrados}/{len(perfiles_a_borrar)} perfiles. ---")
 
 TRIBUNALES_COBRANZA = [
     {'id': '6', 'nombre': 'Jdo. de Letras y Garantía de Pozo Almonte'},
@@ -377,6 +410,9 @@ def main():
                 print("\nTodas las tareas se completaron sin detectar bloqueos.")
 
 if __name__ == "__main__":
+    # La limpieza debe ser el primer paso, antes de iniciar cualquier proceso.
+    limpiar_perfiles_antiguos()
+    
     multiprocessing.freeze_support()
     while True:
         main()

@@ -11,6 +11,10 @@ from dateutil.relativedelta import relativedelta
 from worker_tribunales_penal import scrape_worker
 from verificacion_worker_tribunales_penal import verificacion_worker
 from utils_tribunales_penal import forzar_cierre_navegadores, quedan_procesos_navegador
+import shutil
+import glob
+import tempfile
+import logging
 
 # Configuración centralizada
 RUTA_SALIDA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'Resultados_Globales')
@@ -219,8 +223,41 @@ def main():
             else:
                 print("\nTodas las tareas se completaron sin detectar bloqueos.")
 
+
+def limpiar_perfiles_antiguos():
+    """Busca y elimina todos los directorios de perfiles de Chrome de ejecuciones anteriores."""
+    print("--- Iniciando limpieza de perfiles de navegador antiguos... ---")
+    temp_dir = tempfile.gettempdir()
+    
+    # Patrones para encontrar todos los perfiles relevantes
+    patrones = [
+        os.path.join(temp_dir, "pjud_profile_*"),
+        os.path.join(temp_dir, "pjud_verification_profile_*")
+    ]
+    
+    perfiles_a_borrar = []
+    for patron in patrones:
+        perfiles_a_borrar.extend(glob.glob(patron))
+
+    if not perfiles_a_borrar:
+        print("--- No se encontraron perfiles antiguos para limpiar. ---")
+        return
+
+    borrados = 0
+    for perfil in perfiles_a_borrar:
+        try:
+            shutil.rmtree(perfil)
+            borrados += 1
+        except Exception as e:
+            # Usar print o logging.warning si está configurado
+            print(f"ADVERTENCIA: No se pudo borrar el perfil huérfano '{perfil}'. Causa: {e}")
+            
+    print(f"--- Limpieza finalizada. Se eliminaron {borrados}/{len(perfiles_a_borrar)} perfiles. ---")
+
 if __name__ == "__main__":
     multiprocessing.freeze_support()
+    limpiar_perfiles_antiguos()
+    forzar_cierre_navegadores() # Cierre forzado al inicio
     while True:
         main()
         # Tras finalizar main(), revisamos si quedan tareas pendientes

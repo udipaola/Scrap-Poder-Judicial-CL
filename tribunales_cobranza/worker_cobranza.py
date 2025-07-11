@@ -12,6 +12,7 @@ import pandas as pd
 import random
 import json
 import os
+import tempfile
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
@@ -41,8 +42,15 @@ def scrape_worker(task_info):
     if headless_mode:
         options.add_argument("--headless")
 
+    profile_path = None
     driver = None
     try:
+        # Define un path de perfil único y predecible DENTRO del try
+        profile_path = os.path.join(tempfile.gettempdir(), f"pjud_profile_{task_id}")
+        
+        # Asigna el perfil único a la instancia de Chrome
+        options.add_argument(f"--user-data-dir={profile_path}")
+        
         driver = webdriver.Chrome(options=options)
         driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
             'source': "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"

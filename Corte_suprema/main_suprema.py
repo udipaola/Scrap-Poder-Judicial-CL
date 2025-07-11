@@ -6,6 +6,10 @@ import json
 import os
 import time
 import random
+import shutil
+import glob
+import tempfile
+import logging
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from worker_suprema import scrape_worker
@@ -20,6 +24,36 @@ PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"
 
 # Asegurar que el directorio de salida existe
 os.makedirs(RUTA_SALIDA, exist_ok=True)
+
+def limpiar_perfiles_antiguos():
+    """Busca y elimina todos los directorios de perfiles de Chrome de ejecuciones anteriores."""
+    print("--- Iniciando limpieza de perfiles de navegador antiguos... ---")
+    temp_dir = tempfile.gettempdir()
+    
+    # Patrones para encontrar todos los perfiles relevantes
+    patrones = [
+        os.path.join(temp_dir, "pjud_profile_*"),
+        os.path.join(temp_dir, "pjud_verification_profile_*")
+    ]
+    
+    perfiles_a_borrar = []
+    for patron in patrones:
+        perfiles_a_borrar.extend(glob.glob(patron))
+
+    if not perfiles_a_borrar:
+        print("--- No se encontraron perfiles antiguos para limpiar. ---")
+        return
+
+    borrados = 0
+    for perfil in perfiles_a_borrar:
+        try:
+            shutil.rmtree(perfil)
+            borrados += 1
+        except Exception as e:
+            # Usar print o logging.warning si está configurado
+            print(f"ADVERTENCIA: No se pudo borrar el perfil huérfano '{perfil}'. Causa: {e}")
+            
+    print(f"--- Limpieza finalizada. Se eliminaron {borrados}/{len(perfiles_a_borrar)} perfiles. ---")
 
 def generar_tareas(start_date_str, end_date_str, module_name='Corte_suprema'):
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
@@ -204,6 +238,9 @@ def main():
                 print("\nTodas las tareas se completaron sin detectar bloqueos.")
 
 if __name__ == "__main__":
+    # La limpieza debe ser el primer paso, antes de iniciar cualquier proceso.
+    limpiar_perfiles_antiguos()
+    
     multiprocessing.freeze_support()
     while True:
         main()

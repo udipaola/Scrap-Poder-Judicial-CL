@@ -26,27 +26,29 @@ import tempfile
 def scrape_worker(task_info):
     task, lock, headless_mode, stop_event = task_info
     task_id = task['id']
-    #user_data_dir = tempfile.mkdtemp() # Crea un directorio temporal único
 
     # --- Verificación inicial del evento de parada ---
     if stop_event.is_set():
         print(f"[{task_id}] Evento de parada activado. El worker no se iniciará.")
         return f"STOPPED_BY_EVENT:{task_id}"
 
-    options = webdriver.ChromeOptions()
-    #options.add_argument(f"--user-data-dir={user_data_dir}") # Usa el directorio único
-    options.add_argument('--disable-blink-features=AutomationControlled')
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
-    options.add_argument('--log-level=3')
-    options.add_experimental_option('excludeSwitches', ['enable-logging'])
-    
-    #options.add_argument("--window-position=-2000,0")
-    if headless_mode:
-        options.add_argument("--headless")
-
+    profile_path = None
     driver = None
     try:
+        # Crear un perfil único y predecible basado en task_id
+        profile_path = os.path.join(tempfile.gettempdir(), f"pjud_profile_{task_id}")
+        
+        options = webdriver.ChromeOptions()
+        options.add_argument(f"--user-data-dir={profile_path}")
+        options.add_argument('--disable-blink-features=AutomationControlled')
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+        options.add_argument('--log-level=3')
+        options.add_experimental_option('excludeSwitches', ['enable-logging'])
+        
+        options.add_argument("--window-position=-2000,0")
+        if headless_mode:
+            options.add_argument("--headless")
         driver = webdriver.Chrome(options=options)
         driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
             'source': "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"

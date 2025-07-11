@@ -6,6 +6,10 @@ import json
 import os
 import time
 import random
+import shutil
+import glob
+import tempfile
+import logging
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from worker_laboral import scrape_worker
@@ -177,6 +181,29 @@ COMPETENCIAS_CONFIG = {
     "item_key_id": "tribunal_id",
     "item_key_nombre": "tribunal_nombre"
 }
+
+def limpiar_perfiles_antiguos():
+    """Limpia perfiles antiguos de Chrome para evitar acumulación de archivos temporales."""
+    try:
+        temp_dir = tempfile.gettempdir()
+        patron_perfiles = os.path.join(temp_dir, "pjud_profile_*")
+        perfiles_encontrados = glob.glob(patron_perfiles)
+        
+        for perfil in perfiles_encontrados:
+            try:
+                if os.path.isdir(perfil):
+                    shutil.rmtree(perfil)
+                    logging.info(f"Perfil eliminado: {perfil}")
+            except Exception as e:
+                logging.warning(f"No se pudo eliminar el perfil {perfil}: {e}")
+        
+        if perfiles_encontrados:
+            print(f"[LIMPIEZA] Se eliminaron {len(perfiles_encontrados)} perfiles antiguos de Chrome.")
+        else:
+            print("[LIMPIEZA] No se encontraron perfiles antiguos para eliminar.")
+            
+    except Exception as e:
+        logging.error(f"Error durante la limpieza de perfiles: {e}")
 
 def generar_tareas(start_date_str, end_date_str, modulo_nombre="tribunales_laboral"):
     """Genera tareas con rangos semanales para módulos tribunales_* y diarios para otros."""
@@ -364,6 +391,10 @@ def main():
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
+    
+    # Limpiar perfiles antiguos al inicio
+    limpiar_perfiles_antiguos()
+    
     while True:
         main()
         # Tras finalizar main(), revisamos si quedan tareas pendientes
