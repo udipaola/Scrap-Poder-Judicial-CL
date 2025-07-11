@@ -5,6 +5,8 @@ import pandas as pd
 import random
 import json
 import os
+import tempfile # Added
+import logging # Added
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
@@ -20,7 +22,7 @@ def scrape_worker(task_info):
 
     # --- Verificación inicial del evento de parada ---
     if stop_event.is_set():
-        print(f"[{task_id}] Evento de parada activado. El worker no se iniciará.")
+        logging.info(f"[{task_id}] Evento de parada activado. El worker no se iniciará.")
         return f"STOPPED_BY_EVENT:{task_id}"
 
     # Preferencias para optimizar el navegador (bloquear imágenes)
@@ -30,6 +32,10 @@ def scrape_worker(task_info):
 
     options = webdriver.ChromeOptions()
     options.add_experimental_option("prefs", chrome_prefs)
+
+    # --- Profile Path ---
+    profile_path = os.path.join(tempfile.gettempdir(), f"pjud_profile_{task_id}")
+    options.add_argument(f"--user-data-dir={profile_path}")
     
     # --- INICIO: Silenciar logs de la consola ---
     options.add_argument('--log-level=3')
@@ -41,11 +47,11 @@ def scrape_worker(task_info):
     options.add_experimental_option('useAutomationExtension', False)
     
     if headless_mode:
-        print(f"[{task_id}] Ejecutando en modo HEADLESS.")
+        logging.info(f"[{task_id}] Ejecutando en modo HEADLESS.")
         options.add_argument("--headless")
         options.add_argument("--window-size=1920,1080")
     else:
-        print(f"[{task_id}] Ejecutando en modo VISIBLE (fuera de pantalla).")
+        logging.info(f"[{task_id}] Ejecutando en modo VISIBLE (fuera de pantalla).")
         # Posiciona la ventana fuera del área visible del monitor
         options.add_argument("--window-position=-2000,0")
         # Inicia la ventana maximizada para un comportamiento estable
@@ -62,14 +68,14 @@ def scrape_worker(task_info):
         wait = WebDriverWait(driver, 25)
 
         # --- Verificación de IP ---
-        if is_ip_blocked_con_reintentos(driver, task_id):
-            print(f"[{task_id}] Bloqueo de IP detectado al inicio. Señalando parada.")
+        if is_ip_blocked_con_reintentos(driver, task_id): # This function likely uses print, will need to check utils.py
+            logging.warning(f"[{task_id}] Bloqueo de IP detectado al inicio. Señalando parada.")
             stop_event.set()
-            forzar_cierre_navegadores()
+            forzar_cierre_navegadores() # This function likely uses print, will need to check utils.py
             if driver: driver.quit()
             return f"IP_BLOCKED:{task_id}"
             
-        print(f"[{task_id}] Acceso verificado. Procediendo con el scraping.")
+        logging.info(f"[{task_id}] Acceso verificado. Procediendo con el scraping.")
 
         # --- Aplicación de filtros ---
         fecha_str = task['fecha']
@@ -77,25 +83,25 @@ def scrape_worker(task_info):
         corte_nombre = task['corte_nombre']
         
         try:
-            print(f"[{task_id}] Asegurando clic en 'Búsqueda por Fecha'...")
+            logging.info(f"[{task_id}] Asegurando clic en 'Búsqueda por Fecha'...")
             # Espera antes de hacer clic en "Consulta causas"
             time.sleep(18)
             wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[href="#BusFecha"]'))).click()
             # Espera después de hacer clic en "Consulta causas" y antes de filtrar por fecha
             time.sleep(18)
-            print(f"[{task_id}] Seleccionando Competencia 'Corte Apelaciones'...")
+            logging.info(f"[{task_id}] Seleccionando Competencia 'Corte Apelaciones'...")
             select_competencia = Select(wait.until(EC.presence_of_element_located((By.ID, "fecCompetencia"))))
             select_competencia.select_by_value("2")
 
             # --- INICIO: Espera inteligente para la carga AJAX de las cortes ---
             time.sleep(10)
-            print(f"[{task_id}] Esperando a que la corte '{corte_nombre}' cargue en el menú...")
+            logging.info(f"[{task_id}] Esperando a que la corte '{corte_nombre}' cargue en el menú...")
             wait.until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, f"#corteFec option[value='{corte_id}']"))
             )
             # --- FIN: Espera inteligente ---
 
-            print(f"[{task_id}] Seleccionando Corte: {corte_nombre}...")
+            logging.info(f"[{task_id}] Seleccionando Corte: {corte_nombre}...")
             select_corte_element = driver.find_element(By.ID, "corteFec")
             select_corte = Select(select_corte_element)
             select_corte.select_by_value(corte_id)
@@ -109,7 +115,7 @@ def scrape_worker(task_info):
             
             wait.until(EC.element_to_be_clickable((By.ID, "btnConConsultaFec"))).click()
         except Exception as e:
-            print(f"Error grave en worker {task_id} durante la configuración de filtros: {e}")
+            logging.error(f"Error grave en worker {task_id} durante la configuración de filtros: {e}")
             driver.save_screenshot(f"error_screenshot_{task_id}.png")
             stop_event.set()
             return f"ERROR:{task_id}"
@@ -122,16 +128,16 @@ def scrape_worker(task_info):
             if pagina_actual < pagina_a_empezar:
                 pass
 
-            print(f"--- [{task_id}] Procesando Página {pagina_actual} ---")
+            logging.info(f"--- [{task_id}] Procesando Página {pagina_actual} ---")
             try:
                 wait.until(EC.visibility_of_element_located((By.ID, "dtaTableDetalleFecha")))
             except TimeoutException:
-                print(f"[{task_id}] La tabla de resultados no apareció. Verificando bloqueo.")
-                if is_ip_blocked_con_reintentos(driver, task_id):
+                logging.warning(f"[{task_id}] La tabla de resultados no apareció. Verificando bloqueo.")
+                if is_ip_blocked_con_reintentos(driver, task_id): # This function likely uses print
                     stop_event.set()
                     return f"IP_BLOCKED:{task_id}"
                 else:
-                    print(f"[{task_id}] No parece ser un bloqueo. Se asume que no hay más resultados.")
+                    logging.info(f"[{task_id}] No parece ser un bloqueo. Se asume que no hay más resultados.")
                     break
             
             tabla_principal = driver.find_element(By.ID, "dtaTableDetalleFecha")
@@ -188,12 +194,12 @@ def scrape_worker(task_info):
                     wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, modal_selector)))
 
                 except StaleElementReferenceException:
-                    print(f"[{task_id}] Stale element en la página {pagina_actual}. Se reintentará la página.")
+                    logging.warning(f"[{task_id}] Stale element en la página {pagina_actual}. Se reintentará la página.")
                     break 
                 except Exception as e_row:
                     # Imprimimos solo el tipo de error y la primera línea del mensaje.
                     error_message = str(e_row).split('\n')[0]
-                    print(f"[{task_id}] Error procesando fila, saltando. Causa: {type(e_row).__name__} - {error_message}")
+                    logging.error(f"[{task_id}] Error procesando fila, saltando. Causa: {type(e_row).__name__} - {error_message}")
                     continue
             else: 
                 if registros_pagina:
@@ -219,12 +225,12 @@ def scrape_worker(task_info):
                     with open(CHECKPOINT_FILE, 'w') as f:
                         json.dump(checkpoint_data, f, indent=4)
                     
-                    print(f"[{task_id}] Checkpoint guardado en página {pagina_actual}.")
+                    logging.info(f"[{task_id}] Checkpoint guardado en página {pagina_actual}.")
 
                 try:
                     # 1. Obtener número de página activa ANTES del clic
                     pagina_activa_antes = driver.find_element(By.CSS_SELECTOR, "li.page-item.active > span.page-link").text.strip()
-                    print(f"[{task_id}] Página activa actual: {pagina_activa_antes}.")
+                    logging.info(f"[{task_id}] Página activa actual: {pagina_activa_antes}.")
 
                     # 2. Intentar hacer clic en 'Siguiente'
                     boton_siguiente = wait.until(EC.element_to_be_clickable((By.ID, "sigId")))
@@ -238,19 +244,19 @@ def scrape_worker(task_info):
 
                     # 5. Comparar para detectar bucle infinito
                     if pagina_activa_antes == pagina_activa_despues:
-                        print(f"[{task_id}] El número de página no cambió ({pagina_activa_despues}). Fin de la paginación detectado.")
+                        logging.info(f"[{task_id}] El número de página no cambió ({pagina_activa_despues}). Fin de la paginación detectado.")
                         break # Salir del bucle while
                     else:
-                        print(f"[{task_id}] Paginación exitosa a la página {pagina_activa_despues}.")
+                        logging.info(f"[{task_id}] Paginación exitosa a la página {pagina_activa_despues}.")
                         pagina_actual = int(pagina_activa_despues)
                         
                 except (NoSuchElementException, TimeoutException):
                     # Esto ocurre si el botón 'Siguiente' o el paginador desaparecen por completo
-                    print(f"[{task_id}] No se encontró el botón 'Siguiente' o el paginador. Fin de la tarea.")
+                    logging.info(f"[{task_id}] No se encontró el botón 'Siguiente' o el paginador. Fin de la tarea.")
                     break # Salir del bucle while
                 continue
             
-            print(f"[{task_id}] Reintentando página {pagina_actual}...")
+            logging.info(f"[{task_id}] Reintentando página {pagina_actual}...")
             time.sleep(2)
             continue
 
@@ -273,16 +279,16 @@ def scrape_worker(task_info):
                 with open(CHECKPOINT_FILE, 'w') as f:
                     json.dump(checkpoint_data, f, indent=4)
 
-            print(f"[{task_id}] Tarea completada y marcada en checkpoint.")
+            logging.info(f"[{task_id}] Tarea completada y marcada en checkpoint.")
             return f"COMPLETED:{task_id}"
         else:
-            print(f"[{task_id}] Tarea detenida por evento de parada.")
+            logging.info(f"[{task_id}] Tarea detenida por evento de parada.")
             return f"STOPPED:{task_id}"
 
     except Exception as e:
         # Imprimimos solo el tipo de error y la primera línea del mensaje.
         error_message = str(e).split('\n')[0]
-        print(f"Error grave en worker {task_id}: {type(e).__name__} - {error_message}")
+        logging.error(f"Error grave en worker {task_id}: {type(e).__name__} - {error_message}")
         stop_event.set()
         return f"ERROR:{task_id}"
     finally:

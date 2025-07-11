@@ -1,6 +1,9 @@
 # Archivo: verificacion_worker.py
 
 import time
+import tempfile # Added
+import os # Added
+import random # Added
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -19,8 +22,15 @@ def verificacion_worker(task):
     for intento in range(MAX_REINTENTOS_VERIFICACION):
         print(f"[VERIFICADOR - Intento {intento + 1}/{MAX_REINTENTOS_VERIFICACION}] Iniciando...")
         driver = None
+        profile_path = None # Initialize profile_path
         try:
             options = webdriver.ChromeOptions()
+
+            # --- Profile Path ---
+            profile_name = f"pjud_verification_profile_{int(time.time())}_{random.randint(1000, 9999)}"
+            profile_path = os.path.join(tempfile.gettempdir(), profile_name)
+            options.add_argument(f"--user-data-dir={profile_path}")
+
             options.add_argument('--disable-blink-features=AutomationControlled')
             options.add_experimental_option("excludeSwitches", ["enable-automation"])
             options.add_experimental_option('useAutomationExtension', False)

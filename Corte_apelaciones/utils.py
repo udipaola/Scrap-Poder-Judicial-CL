@@ -2,6 +2,7 @@
 
 import os
 import time
+import logging # Added
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -12,11 +13,11 @@ def forzar_cierre_navegadores():
     Intenta forzar el cierre de todos los procesos de Chrome y ChromeDriver usando taskkill para mayor robustez.
     Esto es útil cuando los drivers o ventanas quedan colgados.
     """
-    print("[CIERRE FORZADO GLOBAL] Intentando terminar todos los procesos de ChromeDriver y Chrome...")
+    logging.info("[CIERRE FORZADO GLOBAL] Intentando terminar todos los procesos de ChromeDriver y Chrome...")
     os.system('taskkill /F /IM chromedriver.exe /T > nul 2>&1')
     os.system('taskkill /F /IM chrome.exe /T > nul 2>&1')
     time.sleep(2) # Pausa para que el SO libere recursos
-    print("[CIERRE FORZADO GLOBAL] Comandos de terminación ejecutados.")
+    logging.info("[CIERRE FORZADO GLOBAL] Comandos de terminación ejecutados.")
 
 def quedan_procesos_navegador():
     """
@@ -40,7 +41,7 @@ def is_ip_blocked_con_reintentos(driver, dia_id, retries=3, delay=5):
     Verifica si la IP está bloqueada, reintentando varias veces.
     Intenta recargar la página para confirmar el estado.
     """
-    print(f"[{dia_id}] Iniciando verificación de bloqueo de IP con {retries} reintentos.")
+    logging.info(f"[{dia_id}] Iniciando verificación de bloqueo de IP con {retries} reintentos.")
     for i in range(retries):
         # Recargamos la página en cada intento para asegurar un estado limpio.
         driver.get("https://oficinajudicialvirtual.pjud.cl/")
@@ -53,14 +54,14 @@ def is_ip_blocked_con_reintentos(driver, dia_id, retries=3, delay=5):
                 EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerrar' and @data-dismiss='modal']"))
             )
             cerrar_popup_button.click()
-            print(f"[{dia_id}] Popup de mantenimiento encontrado y cerrado.")
+            logging.info(f"[{dia_id}] Popup de mantenimiento encontrado y cerrado.")
             time.sleep(1)
         except Exception:
-            print(f"[{dia_id}] No se encontró popup de mantenimiento, continuando...")
+            logging.info(f"[{dia_id}] No se encontró popup de mantenimiento, continuando...")
         
         # La prueba más simple: ¿está el título correcto? Si no, es un bloqueo casi seguro.
         if "Oficina Judicial Virtual" not in driver.title:
-            print(f"[{dia_id}] Verificación {i+1}/{retries}: Fallo. Título de la página: '{driver.title}'.")
+            logging.warning(f"[{dia_id}] Verificación {i+1}/{retries}: Fallo. Título de la página: '{driver.title}'.")
             time.sleep(delay)
             continue # Pasamos al siguiente reintento
 
@@ -76,12 +77,12 @@ def is_ip_blocked_con_reintentos(driver, dia_id, retries=3, delay=5):
             short_wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href="#BusFecha"]')))
             
             # Si llegamos hasta aquí, no estamos bloqueados.
-            print(f"[{dia_id}] Verificación {i+1}/{retries}: Acceso exitoso. No hay bloqueo.")
+            logging.info(f"[{dia_id}] Verificación {i+1}/{retries}: Acceso exitoso. No hay bloqueo.")
             return False
         except Exception as e:
-            print(f"[{dia_id}] Verificación {i+1}/{retries}: El título era correcto, pero no se pudo acceder a la sección de consultas. Error: {e}")
+            logging.warning(f"[{dia_id}] Verificación {i+1}/{retries}: El título era correcto, pero no se pudo acceder a la sección de consultas. Error: {e}")
             time.sleep(delay)
             # Continuamos al siguiente reintento
 
-    print(f"[{dia_id}] BLOQUEO CONFIRMADO después de {retries} reintentos.")
+    logging.error(f"[{dia_id}] BLOQUEO CONFIRMADO después de {retries} reintentos.")
     return True

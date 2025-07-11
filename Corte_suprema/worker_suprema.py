@@ -5,6 +5,7 @@ import pandas as pd
 import random
 import json
 import os
+import tempfile # Added
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -26,6 +27,11 @@ def scrape_worker(task):
         return f"STOPPED_BY_EVENT:{dia_id}"
 
     options = webdriver.ChromeOptions()
+
+    # --- Profile Path ---
+    profile_path = os.path.join(tempfile.gettempdir(), f"pjud_profile_{dia_id}")
+    options.add_argument(f"--user-data-dir={profile_path}")
+
     options.add_argument('--disable-blink-features=AutomationControlled')
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)

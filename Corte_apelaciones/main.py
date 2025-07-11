@@ -5,7 +5,12 @@ import multiprocessing
 import json
 import os
 import time
+import shutil # Added
+import glob # Added
+import tempfile # Added
 import random
+import logging # Added
+from logging.handlers import TimedRotatingFileHandler # Added
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from worker import scrape_worker
@@ -36,6 +41,66 @@ CORTES_APELACIONES = [
     {'id': '91', 'nombre': 'C.A. de San Miguel'}
 ]
 
+# --- Logging Setup Function ---
+def setup_logging(directorio_actual):
+    """Configura el logging para rotar diariamente y mantener 7 días de historial."""
+    log_filename = os.path.join(directorio_actual, 'scraping.log')
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    # Evitar añadir manejadores duplicados
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    formatter = logging.Formatter('%(asctime)s - [%(processName)s-%(process)d] - [%(levelname)s] - %(message)s')
+
+    # Manejador para la consola
+    consola_handler = logging.StreamHandler()
+    consola_handler.setFormatter(formatter)
+
+    # Manejador para el archivo con rotación diaria
+    archivo_handler = TimedRotatingFileHandler(
+        filename=log_filename,
+        when="D",
+        interval=1,
+        backupCount=7,
+        encoding='utf-8'
+    )
+    archivo_handler.setFormatter(formatter)
+
+    logger.addHandler(consola_handler)
+    logger.addHandler(archivo_handler)
+# --- End of Logging Setup ---
+
+# --- Function to clean old profiles ---
+def limpiar_perfiles_antiguos():
+    """Busca y elimina todos los directorios de perfiles temporales de ejecuciones anteriores."""
+    logging.info("--- Iniciando limpieza de perfiles de navegador antiguos... ---")
+    temp_dir = tempfile.gettempdir()
+
+    patrones_a_buscar = [
+        os.path.join(temp_dir, "pjud_profile_*"),
+        os.path.join(temp_dir, "pjud_verification_profile_*")
+    ]
+    perfiles_a_borrar = []
+    for patron in patrones_a_buscar:
+        perfiles_a_borrar.extend(glob.glob(patron))
+
+    if not perfiles_a_borrar:
+        logging.info("--- No se encontraron perfiles antiguos para limpiar. ---")
+        return
+
+    borrados = 0
+    for perfil in perfiles_a_borrar:
+        try:
+            shutil.rmtree(perfil)
+            borrados += 1
+        except Exception as e:
+            logging.warning(f"No se pudo borrar el perfil '{perfil}'. Causa: {e}")
+
+    logging.info(f"--- Limpieza finalizada. Se eliminaron {borrados}/{len(perfiles_a_borrar)} perfiles antiguos. ---")
+# --- End of function ---
+
 def generar_tareas(start_date_str, end_date_str):
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
@@ -57,37 +122,37 @@ def generar_tareas(start_date_str, end_date_str):
     return tareas
 
 def rotar_y_verificar_ip(headless_mode):
-    print("\n" + "="*50)
-    print("INICIANDO PROCESO DE ROTACIÓN Y VERIFICACIÓN DE IP")
-    print("="*50)
+    logging.info("\n" + "="*50)
+    logging.info("INICIANDO PROCESO DE ROTACIÓN Y VERIFICACIÓN DE IP")
+    logging.info("="*50)
     
     while True:
-        print("[IP ROTATION] Desconectando de NordVPN...")
+        logging.info("[IP ROTATION] Desconectando de NordVPN...")
         os.system(f'cd "{NORDVPN_PATH}" && nordvpn -d')
         time.sleep(5)
         
         #Se asegura de cerrar todos los navegadores antes de rotar la IP
-        print("[CIERRE FORZADO] Cerrando todos los navegadores...")
+        logging.info("[CIERRE FORZADO] Cerrando todos los navegadores...")
         forzar_cierre_navegadores() 
         
         pais_elegido = random.choice(PAISES_NORDVPN)
-        print(f"[IP ROTATION] Conectando a: {pais_elegido}")
+        logging.info(f"[IP ROTATION] Conectando a: {pais_elegido}")
         os.system(f'cd "{NORDVPN_PATH}" && nordvpn -c -g "{pais_elegido}"')
         
-        print("[IP ROTATION] Esperando 40s para estabilizar conexión...")
+        logging.info("[IP ROTATION] Esperando 40s para estabilizar conexión...")
         time.sleep(40)
 
-        print("[IP VERIFICATION] Lanzando worker de prueba...")
+        logging.info("[IP VERIFICATION] Lanzando worker de prueba...")
         with multiprocessing.Pool(processes=1) as verification_pool:
             verification_task = [(headless_mode,)]
             resultado_verificacion = verification_pool.map(verificacion_worker, verification_task)[0]
 
         if resultado_verificacion:
-            print("[IP VERIFICATION] ¡ÉXITO! La nueva IP es funcional.")
-            print("="*50 + "\n")
+            logging.info("[IP VERIFICATION] ¡ÉXITO! La nueva IP es funcional.")
+            logging.info("="*50 + "\n")
             return True
         else:
-            print("[IP VERIFICATION] ¡FALLO! La IP no funciona. Reintentando...")
+            logging.warning("[IP VERIFICATION] ¡FALLO! La IP no funciona. Reintentando...")
             time.sleep(30)
 
 def main():
@@ -122,13 +187,13 @@ def main():
                 tareas_pendientes.append(task)
 
         if not tareas_pendientes:
-            print("¡Proceso completado! No hay más tareas pendientes.")
+            logging.info("¡Proceso completado! No hay más tareas pendientes.")
             break
 
         # Reiniciamos el evento de parada para la nueva ronda
         stop_event.clear()
 
-        print(f"Se lanzarán hasta {args.procesos} workers. El inicio se hará en tandas de {args.tanda_size} cada {args.delay_tanda}s.")
+        logging.info(f"Se lanzarán hasta {args.procesos} workers. El inicio se hará en tandas de {args.tanda_size} cada {args.delay_tanda}s.")
 
         # 1. Creamos el pool manualmente, fuera de un bloque 'with'
         pool = multiprocessing.Pool(processes=args.procesos)
@@ -137,40 +202,40 @@ def main():
             tasks_para_pool = [(task, lock, args.headless, stop_event) for task in tareas_pendientes]
             results_async = []
             
-            print(f"Encolando {len(tasks_para_pool)} workers...")
+            logging.info(f"Encolando {len(tasks_para_pool)} workers...")
             for i, task_con_lock in enumerate(tasks_para_pool):
                 if stop_event.is_set():
-                    print("Se ha activado la señal de parada. No se encolarán más workers.")
+                    logging.info("Se ha activado la señal de parada. No se encolarán más workers.")
                     break
                 # Encolamos una tarea para ser ejecutada
                 res = pool.apply_async(scrape_worker, args=(task_con_lock,))
                 results_async.append(res)
-                print(f"  -> Worker {i+1}/{len(tasks_para_pool)} para la fecha {task_con_lock[0]['id']} encolado.")
+                logging.info(f"  -> Worker {i+1}/{len(tasks_para_pool)} para la fecha {task_con_lock[0]['id']} encolado.")
                 
                 # Si hemos alcanzado el tamaño de la tanda, esperamos
                 if (i + 1) % args.tanda_size == 0 and i < len(tasks_para_pool) - 1:
-                    print(f"--- Tanda de {args.tanda_size} workers encolada. Esperando {args.delay_tanda}s... ---")
+                    logging.info(f"--- Tanda de {args.tanda_size} workers encolada. Esperando {args.delay_tanda}s... ---")
                     time.sleep(args.delay_tanda)
 
-            print("\nTodos los workers han sido encolados. Esperando a que terminen...")
+            logging.info("\nTodos los workers han sido encolados. Esperando a que terminen...")
             
             ip_bloqueada_detectada = False
             for res in results_async:
                 try:
                     # Usamos un timeout pequeño para no quedar esperando por un worker que ya debería haber parado
                     resultado = res.get(timeout=30) # Aumentamos un poco el timeout
-                    print(f"Resultado de un worker: {resultado}")
+                    logging.info(f"Resultado de un worker: {resultado}")
                     if isinstance(resultado, str) and (resultado.startswith('IP_BLOCKED') or resultado.startswith('ERROR')):
-                        print(f"¡SEÑAL DE ERROR DETECTADA ({resultado})! Activando evento de parada...")
+                        logging.error(f"¡SEÑAL DE ERROR DETECTADA ({resultado})! Activando evento de parada...")
                         ip_bloqueada_detectada = True
                         stop_event.set()
                         pool.terminate()
                         break 
                 except multiprocessing.TimeoutError:
-                    print("Timeout esperando resultado de un worker. Probablemente ya fue terminado.")
+                    logging.warning("Timeout esperando resultado de un worker. Probablemente ya fue terminado.")
                     continue
                 except Exception as e:
-                    print(f"Error crítico obteniendo resultado de un worker: {e}")
+                    logging.error(f"Error crítico obteniendo resultado de un worker: {e}")
                     ip_bloqueada_detectada = True
                     stop_event.set()
                     pool.terminate()
@@ -181,29 +246,36 @@ def main():
             pool.close()
 
             if ip_bloqueada_detectada:
-                print("\nLimpieza final: Iniciando proceso de cierre forzado de navegadores...")
+                logging.info("\nLimpieza final: Iniciando proceso de cierre forzado de navegadores...")
                 # --- INICIO DEL BLOQUE DE CIERRE ROBUSTO ---
                 intentos = 0
                 while quedan_procesos_navegador() and intentos < 10:
-                    print(f"[CIERRE FORZADO - Intento {intentos + 1}] Aún quedan procesos activos. Reintentando cierre...")
+                    logging.info(f"[CIERRE FORZADO - Intento {intentos + 1}] Aún quedan procesos activos. Reintentando cierre...")
                     forzar_cierre_navegadores()
                     time.sleep(3) # Damos tiempo extra para que los procesos terminen
                     intentos += 1
 
                 if quedan_procesos_navegador():
-                    print("[CIERRE FORZADO] ¡ADVERTENCIA! No se pudieron cerrar todos los procesos de navegador tras varios intentos.")
+                    logging.warning("[CIERRE FORZADO] ¡ADVERTENCIA! No se pudieron cerrar todos los procesos de navegador tras varios intentos.")
                 else:
-                    print("[CIERRE FORZADO] Éxito. Todos los procesos de navegador han sido cerrados.")
+                    logging.info("[CIERRE FORZADO] Éxito. Todos los procesos de navegador han sido cerrados.")
                 # --- FIN DEL BLOQUE DE CIERRE ROBUSTO ---
                 
-                print("\nProceso de rotación de IP iniciado.")
+                logging.info("\nProceso de rotación de IP iniciado.")
                 rotar_y_verificar_ip(args.headless)
-                print("\nIP rotada. Reiniciando el ciclo de procesamiento...")
+                logging.info("\nIP rotada. Reiniciando el ciclo de procesamiento...")
                 continue
             else:
-                print("\nTodas las tareas se completaron sin detectar bloqueos.")
+                logging.info("\nTodas las tareas se completaron sin detectar bloqueos.")
 
 if __name__ == "__main__":
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    setup_logging(script_dir) # Called first
+
+    limpiar_perfiles_antiguos() # Called after logging setup
+
+    logging.info(f"========== INICIO DE EJECUCIÓN DEL MÓDULO {os.path.basename(script_dir)} ==========")
+
     multiprocessing.freeze_support()
     while True:
         main()
@@ -216,7 +288,7 @@ if __name__ == "__main__":
         # Si no quedan tareas pendientes, salimos del loop
         tareas_pendientes = [tid for tid, tinfo in checkpoint_data.items() if tinfo.get('status') != 'completed']
         if not tareas_pendientes:
-            print("\n¡Todas las fechas solicitadas han sido procesadas! Cerrando el ciclo automático.")
+            logging.info("\n¡Todas las fechas solicitadas han sido procesadas! Cerrando el ciclo automático.")
             break
         else:
-            print("\nReiniciando ciclo para continuar con las fechas pendientes...")
+            logging.info("\nReiniciando ciclo para continuar con las fechas pendientes...")

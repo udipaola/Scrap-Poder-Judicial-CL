@@ -1,6 +1,10 @@
 # Archivo: verificacion_worker.py
 
 import time
+import tempfile # Added
+import os # Added
+import random # Added
+import logging # Added
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -17,10 +21,18 @@ def verificacion_worker(task):
     headless_mode, = task
 
     for intento in range(MAX_REINTENTOS_VERIFICACION):
-        print(f"[VERIFICADOR - Intento {intento + 1}/{MAX_REINTENTOS_VERIFICACION}] Iniciando...")
+        logging.info(f"[VERIFICADOR - Intento {intento + 1}/{MAX_REINTENTOS_VERIFICACION}] Iniciando...")
         driver = None
+        profile_path = None # Initialize profile_path
         try:
             options = webdriver.ChromeOptions()
+
+            # --- Profile Path ---
+            # Using a unique name for verification worker profiles
+            profile_name = f"pjud_verification_profile_{int(time.time())}_{random.randint(1000, 9999)}"
+            profile_path = os.path.join(tempfile.gettempdir(), profile_name)
+            options.add_argument(f"--user-data-dir={profile_path}")
+
             options.add_argument('--disable-blink-features=AutomationControlled')
             options.add_experimental_option("excludeSwitches", ["enable-automation"])
             options.add_experimental_option('useAutomationExtension', False)
@@ -51,20 +63,20 @@ def verificacion_worker(task):
             short_wait = WebDriverWait(driver, 10)
             short_wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href="#BusFecha"]')))
             
-            print(f"[VERIFICADOR - Intento {intento + 1}] ¡ÉXITO! Acceso verificado.")
+            logging.info(f"[VERIFICADOR - Intento {intento + 1}] ¡ÉXITO! Acceso verificado.")
             if driver:
                 driver.quit()
             return True # Si todo va bien, retornamos True y salimos de la función
 
         except Exception as e:
-            print(f"[VERIFICADOR - Intento {intento + 1}] Fallo: {str(e)[:100]}...")
+            logging.error(f"[VERIFICADOR - Intento {intento + 1}] Fallo: {str(e)[:100]}...")
             if driver:
                 driver.quit()
             if intento < MAX_REINTENTOS_VERIFICACION - 1:
-                print("Reintentando en 5 segundos...")
+                logging.info("Reintentando en 5 segundos...")
                 time.sleep(5)
             continue # Pasamos a la siguiente iteración del bucle
 
     # Si el bucle termina sin haber retornado True, es que todos los intentos fallaron
-    print("[VERIFICADOR] Todos los intentos de verificación han fallado.")
+    logging.error("[VERIFICADOR] Todos los intentos de verificación han fallado.")
     return False
