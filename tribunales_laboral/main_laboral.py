@@ -8,9 +8,10 @@ import time
 import random
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from worker_tribunales_laboral import scrape_worker
-from verificacion_worker_tribunales_laboral import verificacion_worker
-from utils_tribunales_laboral import forzar_cierre_navegadores, quedan_procesos_navegador
+from worker_laboral import scrape_worker
+from tribunales_laboral.verificacion_worker_laboral import verificacion_worker
+from verificacion_worker_laboral import verificacion_worker
+from utils_laboral import forzar_cierre_navegadores, quedan_procesos_navegador
 
 CHECKPOINT_FILE = 'checkpoint.json'
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
@@ -18,7 +19,6 @@ PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"
 
 # --- Solo Laboral ---
 TRIBUNALES_LABORAL = [
-    {'id': '0', 'nombre': 'Seleccione Tribunal...'},
     {'id': '6', 'nombre': 'Juzgado de Letras y Garantía de Pozo Almonte'},
     {'id': '13', 'nombre': 'Juzgado de Letras de Tocopilla'},
     {'id': '14', 'nombre': 'Juzgado de Letras y Garantía de María Elena'},

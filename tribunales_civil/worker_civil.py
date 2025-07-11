@@ -17,7 +17,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
-from utils_tribunales import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
+from utils_civil import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
 
 CHECKPOINT_FILE = 'checkpoint.json'
 
@@ -26,7 +26,6 @@ import tempfile
 def scrape_worker(task_info):
     task, lock, headless_mode, stop_event = task_info
     task_id = task['id']
-    #user_data_dir = tempfile.mkdtemp() # Crea un directorio temporal único
 
     # --- Verificación inicial del evento de parada ---
     if stop_event.is_set():
@@ -34,14 +33,13 @@ def scrape_worker(task_info):
         return f"STOPPED_BY_EVENT:{task_id}"
 
     options = webdriver.ChromeOptions()
-    #options.add_argument(f"--user-data-dir={user_data_dir}") # Usa el directorio único
     options.add_argument('--disable-blink-features=AutomationControlled')
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
     options.add_argument('--log-level=3')
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     
-    #options.add_argument("--window-position=-2000,0")
+    options.add_argument("--window-position=-2000,0")
     if headless_mode:
         options.add_argument("--headless")
 

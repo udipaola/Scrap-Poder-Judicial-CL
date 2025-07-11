@@ -17,7 +17,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
-from utils_tribunales_laboral import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
+from utils_laboral import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
 
 CHECKPOINT_FILE = 'checkpoint.json'
 
