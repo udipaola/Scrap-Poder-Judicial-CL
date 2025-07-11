@@ -12,7 +12,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 from utils_suprema import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
 
-CHECKPOINT_FILE = 'checkpoint.json'
+# El checkpoint file se obtendrá de la tarea
 
 def scrape_worker(task):
     """
@@ -51,7 +51,12 @@ def scrape_worker(task):
 
         print(f"[{dia_id}] Acceso verificado. Procediendo con el scraping.")
 
-        fecha_str = dia_a_procesar['fecha']
+        # --- Extracción de información de la tarea ---
+        ruta_salida = dia_a_procesar['ruta_salida']
+        fecha_desde_str = dia_a_procesar['fecha_desde_str']
+        fecha_hasta_str = dia_a_procesar['fecha_hasta_str']
+        fecha_str = dia_a_procesar['fecha']  # Para compatibilidad con el código existente
+        checkpoint_file = os.path.join(ruta_salida, 'checkpoint_suprema.json')
         try:
             wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[href="#BusFecha"]'))).click()
             
@@ -64,7 +69,8 @@ def scrape_worker(task):
             wait.until(EC.element_to_be_clickable((By.ID, "btnConConsultaFec"))).click()
         except Exception as e:
             print(f"Error grave en worker {dia_id} durante la configuración de filtros: {e}")
-            driver.save_screenshot(f"error_screenshot_{dia_id}.png")
+            screenshot_path = os.path.join(ruta_salida, f"error_screenshot_{dia_id}.png")
+            driver.save_screenshot(screenshot_path)
             stop_event.set()
             return f"ERROR:{dia_id}"
         
@@ -201,18 +207,19 @@ def scrape_worker(task):
             # Este bloque 'else' solo se ejecuta si el 'for' termina SIN un 'break'
             if registros_pagina:
                 df = pd.DataFrame(registros_pagina)
-                header = not os.path.exists(f"resultados_{dia_id}.csv")
-                df.to_csv(f"resultados_{dia_id}.csv", mode='a', sep=';', index=False, encoding='utf-8-sig', header=header)
+                csv_path = os.path.join(ruta_salida, f"resultados_{dia_id}.csv")
+                header = not os.path.exists(csv_path)
+                df.to_csv(csv_path, mode='a', sep=';', index=False, encoding='utf-8-sig', header=header)
             
             with lock:
                 # (Tu lógica de checkpoint aquí... es correcta)
                 try:
-                    with open(CHECKPOINT_FILE, 'r+') as f:
+                    with open(checkpoint_file, 'r+') as f:
                         checkpoint_data = json.load(f)
                 except (FileNotFoundError, json.JSONDecodeError):
                     checkpoint_data = {}
                 checkpoint_data[dia_id] = {"status": "in_progress", "last_page": pagina_actual}
-                with open(CHECKPOINT_FILE, 'w') as f:
+                with open(checkpoint_file, 'w') as f:
                     json.dump(checkpoint_data, f, indent=4)
                 print(f"[{dia_id}] Checkpoint guardado en página {pagina_actual}.")
 
@@ -245,7 +252,7 @@ def scrape_worker(task):
             with lock:
                 # (Tu lógica de marcar como completado aquí... es correcta)
                 try:
-                    with open(CHECKPOINT_FILE, 'r+') as f:
+                    with open(checkpoint_file, 'r+') as f:
                         checkpoint_data = json.load(f)
                 except (FileNotFoundError, json.JSONDecodeError):
                     checkpoint_data = {}
@@ -253,7 +260,7 @@ def scrape_worker(task):
                     checkpoint_data[dia_id]['status'] = 'completed'
                 else:
                     checkpoint_data[dia_id] = {'status': 'completed'}
-                with open(CHECKPOINT_FILE, 'w') as f:
+                with open(checkpoint_file, 'w') as f:
                     json.dump(checkpoint_data, f, indent=4)
             print(f"[{dia_id}] Tarea completada.")
             return f"COMPLETED:{dia_id}"

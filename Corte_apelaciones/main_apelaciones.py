@@ -12,9 +12,14 @@ from worker_apelaciones import scrape_worker
 from verificacion_worker_apelaciones import verificacion_worker
 from utils_apelaciones import forzar_cierre_navegadores, quedan_procesos_navegador
 
-CHECKPOINT_FILE = 'checkpoint.json'
+# Configuración centralizada
+RUTA_SALIDA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'Resultados_Globales')
+CHECKPOINT_FILE = os.path.join(RUTA_SALIDA, 'checkpoint_apelaciones.json')
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
 PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"]
+
+# Asegurar que el directorio de salida existe
+os.makedirs(RUTA_SALIDA, exist_ok=True)
 
 CORTES_APELACIONES = [
     {'id': '10', 'nombre': 'C.A. de Arica'},
@@ -36,22 +41,28 @@ CORTES_APELACIONES = [
     {'id': '91', 'nombre': 'C.A. de San Miguel'}
 ]
 
-def generar_tareas(start_date_str, end_date_str):
+def generar_tareas(start_date_str, end_date_str, module_name='Corte_apelaciones'):
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
     current_date = start_date
     tareas = []
+    
+    # Para módulos Corte, usar rangos diarios
     while current_date <= end_date:
-        fecha_id_base = current_date.strftime('%Y-%m-%d')
+        fecha_desde_str = current_date.strftime('%Y-%m-%d')
+        fecha_hasta_str = current_date.strftime('%Y-%m-%d')
         fecha_formato_web = current_date.strftime('%d/%m/%Y')
+        
         for corte in CORTES_APELACIONES:
-            # El ID de la tarea ahora es único para la combinación fecha-corte
-            tarea_id = f"{fecha_id_base}_{corte['id']}"
+            tarea_id = f"{fecha_desde_str}_{corte['id']}"
             tareas.append({
                 'id': tarea_id,
                 'fecha': fecha_formato_web,
+                'fecha_desde_str': fecha_desde_str,
+                'fecha_hasta_str': fecha_hasta_str,
                 'corte_id': corte['id'],
-                'corte_nombre': corte['nombre']
+                'corte_nombre': corte['nombre'],
+                'ruta_salida': RUTA_SALIDA
             })
         current_date += timedelta(days=1)
     return tareas

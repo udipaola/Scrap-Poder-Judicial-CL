@@ -19,14 +19,18 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 from utils_civil import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
 
-CHECKPOINT_FILE = 'checkpoint.json'
+# Checkpoint file will be determined from task info
 
 import tempfile
 
 def scrape_worker(task_info):
     task, lock, headless_mode, stop_event = task_info
+    # 1. Extraer la ruta de salida y las fechas
+    ruta_salida = task['ruta_salida']
     task_id = task['id']
-
+    fecha_desde_str = task['fecha_desde']
+    fecha_hasta_str = task['fecha_hasta']
+    
     # --- Verificación inicial del evento de parada ---
     if stop_event.is_set():
         print(f"[{task_id}] Evento de parada activado. El worker no se iniciará.")
@@ -44,7 +48,7 @@ def scrape_worker(task_info):
         options.add_argument('--log-level=3')
         options.add_experimental_option('excludeSwitches', ['enable-logging'])
         
-        options.add_argument("--window-position=-2000,0")
+        #options.add_argument("--window-position=-2000,0")
         if headless_mode:
             options.add_argument("--headless")
 
@@ -62,9 +66,7 @@ def scrape_worker(task_info):
             
         print(f"[{task_id}] Acceso verificado. Procediendo con el scraping.")
 
-        # TAREA 2.1: Reemplazar el desempaquetado de la tarea por esta versión genérica.
-    
-        fecha_str = task['fecha']
+        # 2. Desempaquetado genérico de la tarea
         competencia_nombre = task['competencia_nombre']
         competencia_value = task['competencia_value']
         selector_id = task['selector_id']
@@ -109,11 +111,11 @@ def scrape_worker(task_info):
             select_item = Select(driver.find_element(By.ID, selector_id))
             select_item.select_by_value(item_id)
         
-            # Paso 5: Ingresar fechas y buscar
+            # Paso 5: Ingresar fechas y buscar (usando rango de fechas)
             input_desde = driver.find_element(By.ID, "fecDesde")
             input_hasta = driver.find_element(By.ID, "fecHasta")
-            driver.execute_script(f"arguments[0].removeAttribute('readonly'); arguments[0].value='{fecha_str}';", input_desde)
-            driver.execute_script(f"arguments[0].removeAttribute('readonly'); arguments[0].value='{fecha_str}';", input_hasta)
+            driver.execute_script(f"arguments[0].removeAttribute('readonly'); arguments[0].value='{fecha_desde_str}';", input_desde)
+            driver.execute_script(f"arguments[0].removeAttribute('readonly'); arguments[0].value='{fecha_hasta_str}';", input_hasta)
             time.sleep(2)
             wait.until(EC.element_to_be_clickable((By.ID, "btnConConsultaFec"))).click()
             
@@ -121,8 +123,11 @@ def scrape_worker(task_info):
             time.sleep(3);
             
         except Exception as e:
-            # ... (manejo de error en la configuración de filtros) ...
-            print(f"Error en la configuracion de filtros: {e}")
+            print(f"[{task_id}] Error en la configuración de filtros: {e}")
+            # 3. Guardar screenshot en la ruta centralizada
+            screenshot_path = os.path.join(ruta_salida, f"error_screenshot_{task_id}.png")
+            driver.save_screenshot(screenshot_path)
+            raise
 
         # --- FIN: LÓGICA DE SELECCIÓN DE FILTROS UNIFICADA ---
 
@@ -211,12 +216,16 @@ def scrape_worker(task_info):
             # Guardar datos y checkpoint
             if registros_pagina:
                 df = pd.DataFrame(registros_pagina)
-                header = not os.path.exists(f"resultados_{task_id}.csv")
-                df.to_csv(f"resultados_{task_id}.csv", mode='a', sep=';', index=False, encoding='utf-8-sig', header=header)
+                # 4. Guardar CSV en la ruta centralizada
+                nombre_archivo_csv = os.path.join(ruta_salida, f"resultados_{task_id}.csv")
+                header = not os.path.exists(nombre_archivo_csv)
+                df.to_csv(nombre_archivo_csv, mode='a', sep=';', index=False, encoding='utf-8-sig', header=header)
             
+            # Usar checkpoint centralizado
+            checkpoint_file = os.path.join(ruta_salida, f"checkpoint_{os.path.basename(os.path.dirname(__file__))}.json")
             with lock:
                 try:
-                    with open(CHECKPOINT_FILE, 'r+') as f:
+                    with open(checkpoint_file, 'r+') as f:
                         checkpoint_data = json.load(f)
                 except (FileNotFoundError, json.JSONDecodeError):
                     checkpoint_data = {}
@@ -226,7 +235,7 @@ def scrape_worker(task_info):
                     "last_page": pagina_actual
                 }
 
-                with open(CHECKPOINT_FILE, 'w') as f:
+                with open(checkpoint_file, 'w') as f:
                     json.dump(checkpoint_data, f, indent=4)
                 
                 print(f"[{task_id}] Checkpoint guardado en página {pagina_actual}.")
@@ -256,9 +265,10 @@ def scrape_worker(task_info):
 
         # --- Finalización ---
         if not stop_event.is_set():
+            checkpoint_file = os.path.join(ruta_salida, f"checkpoint_{os.path.basename(os.path.dirname(__file__))}.json")
             with lock:
                 try:
-                    with open(CHECKPOINT_FILE, 'r+') as f:
+                    with open(checkpoint_file, 'r+') as f:
                         checkpoint_data = json.load(f)
                 except (FileNotFoundError, json.JSONDecodeError):
                     checkpoint_data = {}
@@ -268,7 +278,7 @@ def scrape_worker(task_info):
                 else:
                     checkpoint_data[task_id] = {'status': 'completed'}
                 
-                with open(CHECKPOINT_FILE, 'w') as f:
+                with open(checkpoint_file, 'w') as f:
                     json.dump(checkpoint_data, f, indent=4)
 
             print(f"[{task_id}] Tarea completada y marcada en checkpoint.")

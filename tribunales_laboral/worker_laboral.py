@@ -19,8 +19,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 from utils_laboral import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
 
-CHECKPOINT_FILE = 'checkpoint.json'
-
 import tempfile
 
 def scrape_worker(task_info):
@@ -62,11 +60,20 @@ def scrape_worker(task_info):
         print(f"[{task_id}] Acceso verificado. Procediendo con el scraping.")
 
         # TAREA 2.1: Reemplazar el desempaquetado de la tarea por esta versión genérica.
-    
-        fecha_str = task['fecha']
+        
+        # Extraer información de la nueva estructura de tareas
+        ruta_salida = task['ruta_salida']
+        fecha_desde_str = task['fecha_desde']
+        fecha_hasta_str = task['fecha_hasta']
         competencia_nombre = task['competencia_nombre']
         competencia_value = task['competencia_value']
         selector_id = task['selector_id']
+        
+        # Crear directorio de salida si no existe
+        os.makedirs(ruta_salida, exist_ok=True)
+        
+        # Definir archivo de checkpoint centralizado
+        CHECKPOINT_FILE = os.path.join(ruta_salida, 'checkpoint.json')
 
         # Determinar las claves correctas para el ID y el nombre del ítem
         item_id_key = next((key for key in task if key.endswith('_id') and key != 'id' and key != 'selector_id'), None)
@@ -111,8 +118,8 @@ def scrape_worker(task_info):
             # Paso 5: Ingresar fechas y buscar
             input_desde = driver.find_element(By.ID, "fecDesde")
             input_hasta = driver.find_element(By.ID, "fecHasta")
-            driver.execute_script(f"arguments[0].removeAttribute('readonly'); arguments[0].value='{fecha_str}';", input_desde)
-            driver.execute_script(f"arguments[0].removeAttribute('readonly'); arguments[0].value='{fecha_str}';", input_hasta)
+            driver.execute_script(f"arguments[0].removeAttribute('readonly'); arguments[0].value='{fecha_desde_str}';", input_desde)
+            driver.execute_script(f"arguments[0].removeAttribute('readonly'); arguments[0].value='{fecha_hasta_str}';", input_hasta)
             time.sleep(2)
             wait.until(EC.element_to_be_clickable((By.ID, "btnConConsultaFec"))).click()
             
@@ -120,7 +127,13 @@ def scrape_worker(task_info):
             time.sleep(3)
             
         except Exception as e:
-            # ... (manejo de error en la configuración de filtros) ...
+            # Guardar screenshot de error en la ruta centralizada
+            error_screenshot_path = os.path.join(ruta_salida, f"error_filtros_{task_id}.png")
+            try:
+                driver.save_screenshot(error_screenshot_path)
+                print(f"[{task_id}] Screenshot de error guardado en: {error_screenshot_path}")
+            except Exception:
+                pass
             print(f"Error en la configuracion de filtros: {e}")
 
         # --- FIN: LÓGICA DE SELECCIÓN DE FILTROS UNIFICADA ---
@@ -227,8 +240,9 @@ def scrape_worker(task_info):
             # Guardar datos y checkpoint
             if registros_pagina:
                 df = pd.DataFrame(registros_pagina)
-                header = not os.path.exists(f"resultados_{task_id}.csv")
-                df.to_csv(f"resultados_{task_id}.csv", mode='a', sep=';', index=False, encoding='utf-8-sig', header=header)
+                csv_path = os.path.join(ruta_salida, f"resultados_{task_id}.csv")
+                header = not os.path.exists(csv_path)
+                df.to_csv(csv_path, mode='a', sep=';', index=False, encoding='utf-8-sig', header=header)
             
             with lock:
                 try:

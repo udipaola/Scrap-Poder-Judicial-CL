@@ -1,4 +1,4 @@
-# Archivo: main.py
+# Archivo: main_civil.py
 
 import argparse
 import multiprocessing
@@ -16,7 +16,13 @@ import glob
 import tempfile
 import logging
 
-CHECKPOINT_FILE = 'checkpoint.json'
+# --- INICIO: Configuración Centralizada ---
+
+DIRECTORIO_ACTUAL = os.path.dirname(os.path.abspath(__file__))
+NOMBRE_MODULO = os.path.basename(DIRECTORIO_ACTUAL)
+RUTA_SALIDA = os.path.join(DIRECTORIO_ACTUAL, '..', 'Resultados_Globales')
+os.makedirs(RUTA_SALIDA, exist_ok=True)
+CHECKPOINT_FILE = os.path.join(RUTA_SALIDA, f"checkpoint_{NOMBRE_MODULO}.json")
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
 PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"]
 
@@ -253,37 +259,47 @@ TRIBUNALES_CIVIL = [
     {'id': '1403', 'nombre': '2º Juzgado de Letras de San Bernardo Ex 3°'},
 ]
 
-COMPETENCIA_CIVIL_CONFIG = {
-    "value": "3",
-    "selector_id": "fecTribunal",
-    "items": TRIBUNALES_CIVIL,
-    "item_key_id": "tribunal_id",
-    "item_key_nombre": "tribunal_nombre"
+COMPETENCIAS_CONFIG = {
+    "Civil": {
+        "value": "3", "selector_id": "fecTribunal", "items": TRIBUNALES_CIVIL,
+        "item_key_id": "tribunal_id", "item_key_nombre": "tribunal_nombre"
+    }
 }
 
-# Solo Civil
+# --- FIN: Configuración Centralizada ---
 
-def generar_tareas_civil(start_date_str, end_date_str):
+def generar_tareas(start_date_str, end_date_str, es_tribunal=False):
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
     current_date = start_date
     tareas = []
+
+    incremento = timedelta(days=7) if es_tribunal else timedelta(days=1)
+
     while current_date <= end_date:
+        fecha_inicio_web = current_date.strftime('%d/%m/%Y')
         fecha_id_base = current_date.strftime('%Y-%m-%d')
-        fecha_formato_web = current_date.strftime('%d/%m/%Y')
-        for item in COMPETENCIA_CIVIL_CONFIG["items"]:
-            tarea_id = f"civil_{fecha_id_base}_{item['id']}"
-            tarea = {
-                'id': tarea_id,
-                'fecha': fecha_formato_web,
-                'competencia_nombre': 'Civil',
-                'competencia_value': COMPETENCIA_CIVIL_CONFIG['value'],
-                'selector_id': COMPETENCIA_CIVIL_CONFIG['selector_id'],
-                COMPETENCIA_CIVIL_CONFIG["item_key_id"]: item['id'],
-                COMPETENCIA_CIVIL_CONFIG["item_key_nombre"]: item['nombre']
-            }
-            tareas.append(tarea)
-        current_date += timedelta(days=1)
+        
+        # Determinar el fin del rango
+        if es_tribunal:
+            fin_rango = min(current_date + timedelta(days=6), end_date)
+            fecha_fin_web = fin_rango.strftime('%d/%m/%Y')
+        else:
+            fecha_fin_web = fecha_inicio_web
+
+        for comp_nombre, comp_data in COMPETENCIAS_CONFIG.items():
+            for item in comp_data["items"]:
+                tarea_id = f"{comp_nombre.lower()}_{fecha_id_base}_{item['id']}"
+                tarea = {
+                    'id': tarea_id, 'ruta_salida': RUTA_SALIDA,
+                    'fecha_desde': fecha_inicio_web, 'fecha_hasta': fecha_fin_web,
+                    'competencia_nombre': comp_nombre, 'competencia_value': comp_data['value'],
+                    'selector_id': comp_data['selector_id'],
+                    comp_data["item_key_id"]: item['id'], comp_data["item_key_nombre"]: item['nombre']
+                }
+                tareas.append(tarea)
+        
+        current_date += incremento
     return tareas
 
 def rotar_y_verificar_ip(headless_mode):
@@ -328,7 +344,8 @@ def main():
     parser.add_argument('--delay_tanda', type=int, default=90, help="Segundos de espera entre el inicio de cada tanda.")
     args = parser.parse_args()
 
-    tasks = generar_tareas_civil(args.desde, args.hasta) if args.modo == 'historico' else []
+    es_modulo_tribunal = 'tribunales' in NOMBRE_MODULO
+    tasks = generar_tareas(args.desde, args.hasta, es_tribunal=es_modulo_tribunal) if args.modo == 'historico' else []
 
     manager = multiprocessing.Manager()
     lock = manager.Lock()

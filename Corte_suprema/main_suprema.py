@@ -12,24 +12,36 @@ from worker_suprema import scrape_worker
 from verificacion_worker_suprema import verificacion_worker
 from utils_suprema import forzar_cierre_navegadores, quedan_procesos_navegador
 
-CHECKPOINT_FILE = 'checkpoint.json'
+# Configuración centralizada
+RUTA_SALIDA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'Resultados_Globales')
+CHECKPOINT_FILE = os.path.join(RUTA_SALIDA, 'checkpoint_suprema.json')
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
 PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"]
 
-def generar_rangos_diarios(start_date_str, end_date_str):
+# Asegurar que el directorio de salida existe
+os.makedirs(RUTA_SALIDA, exist_ok=True)
+
+def generar_tareas(start_date_str, end_date_str, module_name='Corte_suprema'):
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
     current_date = start_date
-    rangos = []
+    tareas = []
+    
+    # Para módulos Corte, usar rangos diarios
     while current_date <= end_date:
-        fecha_id = current_date.strftime('%Y-%m-%d')
+        fecha_desde_str = current_date.strftime('%Y-%m-%d')
+        fecha_hasta_str = current_date.strftime('%Y-%m-%d')
         fecha_formato_web = current_date.strftime('%d/%m/%Y')
-        rangos.append({
-            'id': fecha_id,
-            'fecha': fecha_formato_web
+        
+        tareas.append({
+            'id': fecha_desde_str,
+            'fecha': fecha_formato_web,
+            'fecha_desde_str': fecha_desde_str,
+            'fecha_hasta_str': fecha_hasta_str,
+            'ruta_salida': RUTA_SALIDA
         })
         current_date += timedelta(days=1)
-    return rangos
+    return tareas
 
 def rotar_y_verificar_ip(headless_mode):
     print("\n" + "="*50)
@@ -74,7 +86,7 @@ def main():
     parser.add_argument('--delay_tanda', type=int, default=15, help="Segundos de espera entre el inicio de cada tanda.")
     args = parser.parse_args()
 
-    tasks = generar_rangos_diarios(args.desde, args.hasta) if args.modo == 'historico' else []
+    tasks = generar_tareas(args.desde, args.hasta) if args.modo == 'historico' else []
 
     manager = multiprocessing.Manager()
     lock = manager.Lock()

@@ -1,4 +1,4 @@
-# Archivo: main.py
+# Archivo: main_tribunales_penal.py
 
 import argparse
 import multiprocessing
@@ -12,7 +12,9 @@ from worker_tribunales_penal import scrape_worker
 from verificacion_worker_tribunales_penal import verificacion_worker
 from utils_tribunales_penal import forzar_cierre_navegadores, quedan_procesos_navegador
 
-CHECKPOINT_FILE = 'checkpoint.json'
+# Configuración centralizada
+RUTA_SALIDA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'Resultados_Globales')
+CHECKPOINT_FILE = os.path.join(RUTA_SALIDA, 'checkpoint_tribunales_penal.json')
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
 PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"]
 
@@ -25,7 +27,7 @@ TRIBUNALES_PENAL = [
     # ...agrega aquí el resto de los tribunales penales...
 ]
 
-COMPETENCIA_PENAL_CONFIG = {
+COMPETENCIAS_CONFIG = {
     "value": "5",  # Ajusta el value si es distinto para penal
     "selector_id": "fecTribunal",
     "items": TRIBUNALES_PENAL,
@@ -33,27 +35,44 @@ COMPETENCIA_PENAL_CONFIG = {
     "item_key_nombre": "tribunal_nombre"
 }
 
-def generar_tareas_penal(start_date_str, end_date_str):
+def generar_tareas(start_date_str, end_date_str, modulo_nombre="tribunales_penal"):
+    """Genera tareas con rangos semanales para módulos tribunales_* y diarios para otros."""
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
     current_date = start_date
     tareas = []
+    
+    # Determinar incremento: semanal para tribunales_*, diario para otros
+    es_tribunales = modulo_nombre.startswith('tribunales_')
+    incremento = timedelta(weeks=1) if es_tribunales else timedelta(days=1)
+    
     while current_date <= end_date:
-        fecha_id_base = current_date.strftime('%Y-%m-%d')
-        fecha_formato_web = current_date.strftime('%d/%m/%Y')
-        for item in COMPETENCIA_PENAL_CONFIG["items"]:
+        if es_tribunales:
+            # Para módulos tribunales: rango semanal
+            fecha_hasta = min(current_date + timedelta(days=6), end_date)
+            fecha_desde_str = current_date.strftime('%d/%m/%Y')
+            fecha_hasta_str = fecha_hasta.strftime('%d/%m/%Y')
+            fecha_id_base = f"{current_date.strftime('%Y-%m-%d')}_to_{fecha_hasta.strftime('%Y-%m-%d')}"
+        else:
+            # Para otros módulos: día individual
+            fecha_desde_str = fecha_hasta_str = current_date.strftime('%d/%m/%Y')
+            fecha_id_base = current_date.strftime('%Y-%m-%d')
+        
+        for item in COMPETENCIAS_CONFIG["items"]:
             tarea_id = f"penal_{fecha_id_base}_{item['id']}"
             tarea = {
                 'id': tarea_id,
-                'fecha': fecha_formato_web,
+                'fecha_desde_str': fecha_desde_str,
+                'fecha_hasta_str': fecha_hasta_str,
                 'competencia_nombre': 'Penal',
-                'competencia_value': COMPETENCIA_PENAL_CONFIG['value'],
-                'selector_id': COMPETENCIA_PENAL_CONFIG['selector_id'],
-                COMPETENCIA_PENAL_CONFIG["item_key_id"]: item['id'],
-                COMPETENCIA_PENAL_CONFIG["item_key_nombre"]: item['nombre']
+                'competencia_value': COMPETENCIAS_CONFIG['value'],
+                'selector_id': COMPETENCIAS_CONFIG['selector_id'],
+                'ruta_salida': RUTA_SALIDA,
+                COMPETENCIAS_CONFIG["item_key_id"]: item['id'],
+                COMPETENCIAS_CONFIG["item_key_nombre"]: item['nombre']
             }
             tareas.append(tarea)
-        current_date += timedelta(days=1)
+        current_date += incremento
     return tareas
 
 def rotar_y_verificar_ip(headless_mode):
@@ -98,7 +117,7 @@ def main():
     parser.add_argument('--delay_tanda', type=int, default=90, help="Segundos de espera entre el inicio de cada tanda.")
     args = parser.parse_args()
 
-    tasks = generar_tareas_penal(args.desde, args.hasta) if args.modo == 'historico' else []
+    tasks = generar_tareas(args.desde, args.hasta, "tribunales_penal") if args.modo == 'historico' else []
 
     manager = multiprocessing.Manager()
     lock = manager.Lock()
