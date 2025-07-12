@@ -30,9 +30,8 @@ def verificacion_worker(task):
             options.add_argument('--disable-blink-features=AutomationControlled')
             options.add_experimental_option("excludeSwitches", ["enable-automation"])
             options.add_experimental_option('useAutomationExtension', False)
-            options.add_argument("--window-position=-2000,0")
             if headless_mode:
-                options.add_argument("--headless")
+                options.add_argument("--window-position=-2000,0")
 
             driver = webdriver.Chrome(options=options)
             driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {

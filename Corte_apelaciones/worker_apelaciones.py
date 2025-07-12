@@ -43,12 +43,11 @@ def scrape_worker(task_info):
     
     if headless_mode:
         print(f"[{task_id}] Ejecutando en modo HEADLESS.")
-        options.add_argument("--headless")
-        options.add_argument("--window-size=1920,1080")
-    else:
-        print(f"[{task_id}] Ejecutando en modo VISIBLE (fuera de pantalla).")
         # Posiciona la ventana fuera del área visible del monitor
         options.add_argument("--window-position=-2000,0")
+        options.add_argument("--window-size=1920,1080")
+    else:
+        print(f"[{task_id}] Ejecutando en modo VISIBLE.")
         # Inicia la ventana maximizada para un comportamiento estable
         options.add_argument("--start-maximized")
         # Deshabilita la barra "Chrome está siendo controlado..."
