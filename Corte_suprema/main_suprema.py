@@ -6,30 +6,76 @@ import json
 import os
 import time
 import random
+import shutil
+import glob
+import tempfile
+import logging
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from worker_suprema import scrape_worker
 from verificacion_worker_suprema import verificacion_worker
 from utils_suprema import forzar_cierre_navegadores, quedan_procesos_navegador
 
-CHECKPOINT_FILE = 'checkpoint.json'
+# Configuración centralizada
+RUTA_SALIDA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'Resultados_Globales')
+CHECKPOINT_FILE = os.path.join(RUTA_SALIDA, 'checkpoint_suprema.json')
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
 PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"]
 
-def generar_rangos_diarios(start_date_str, end_date_str):
+# Asegurar que el directorio de salida existe
+os.makedirs(RUTA_SALIDA, exist_ok=True)
+
+def limpiar_perfiles_antiguos():
+    """Busca y elimina todos los directorios de perfiles de Chrome de ejecuciones anteriores."""
+    print("--- Iniciando limpieza de perfiles de navegador antiguos... ---")
+    temp_dir = tempfile.gettempdir()
+    
+    # Patrones para encontrar todos los perfiles relevantes
+    patrones = [
+        os.path.join(temp_dir, "pjud_profile_*"),
+        os.path.join(temp_dir, "pjud_verification_profile_*")
+    ]
+    
+    perfiles_a_borrar = []
+    for patron in patrones:
+        perfiles_a_borrar.extend(glob.glob(patron))
+
+    if not perfiles_a_borrar:
+        print("--- No se encontraron perfiles antiguos para limpiar. ---")
+        return
+
+    borrados = 0
+    for perfil in perfiles_a_borrar:
+        try:
+            shutil.rmtree(perfil)
+            borrados += 1
+        except Exception as e:
+            # Usar print o logging.warning si está configurado
+            print(f"ADVERTENCIA: No se pudo borrar el perfil huérfano '{perfil}'. Causa: {e}")
+            
+    print(f"--- Limpieza finalizada. Se eliminaron {borrados}/{len(perfiles_a_borrar)} perfiles. ---")
+
+def generar_tareas(start_date_str, end_date_str, module_name='Corte_suprema'):
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
     current_date = start_date
-    rangos = []
+    tareas = []
+    
+    # Para módulos Corte, usar rangos diarios
     while current_date <= end_date:
-        fecha_id = current_date.strftime('%Y-%m-%d')
+        fecha_desde_str = current_date.strftime('%Y-%m-%d')
+        fecha_hasta_str = current_date.strftime('%Y-%m-%d')
         fecha_formato_web = current_date.strftime('%d/%m/%Y')
-        rangos.append({
-            'id': fecha_id,
-            'fecha': fecha_formato_web
+        
+        tareas.append({
+            'id': fecha_desde_str,
+            'fecha': fecha_formato_web,
+            'fecha_desde_str': fecha_desde_str,
+            'fecha_hasta_str': fecha_hasta_str,
+            'ruta_salida': RUTA_SALIDA
         })
         current_date += timedelta(days=1)
-    return rangos
+    return tareas
 
 def rotar_y_verificar_ip(headless_mode):
     print("\n" + "="*50)
@@ -74,7 +120,7 @@ def main():
     parser.add_argument('--delay_tanda', type=int, default=15, help="Segundos de espera entre el inicio de cada tanda.")
     args = parser.parse_args()
 
-    tasks = generar_rangos_diarios(args.desde, args.hasta) if args.modo == 'historico' else []
+    tasks = generar_tareas(args.desde, args.hasta) if args.modo == 'historico' else []
 
     manager = multiprocessing.Manager()
     lock = manager.Lock()
@@ -192,6 +238,9 @@ def main():
                 print("\nTodas las tareas se completaron sin detectar bloqueos.")
 
 if __name__ == "__main__":
+    # La limpieza debe ser el primer paso, antes de iniciar cualquier proceso.
+    limpiar_perfiles_antiguos()
+    
     multiprocessing.freeze_support()
     while True:
         main()

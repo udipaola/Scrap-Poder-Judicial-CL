@@ -1,4 +1,4 @@
-# Archivo: main.py
+# Archivo: main_civil.py
 
 import argparse
 import multiprocessing
@@ -11,8 +11,18 @@ from dateutil.relativedelta import relativedelta
 from worker_civil import scrape_worker
 from verificacion_worker_civil import verificacion_worker
 from utils_civil import forzar_cierre_navegadores, quedan_procesos_navegador
+import shutil
+import glob
+import tempfile
+import logging
 
-CHECKPOINT_FILE = 'checkpoint.json'
+# --- INICIO: Configuración Centralizada ---
+
+DIRECTORIO_ACTUAL = os.path.dirname(os.path.abspath(__file__))
+NOMBRE_MODULO = os.path.basename(DIRECTORIO_ACTUAL)
+RUTA_SALIDA = os.path.join(DIRECTORIO_ACTUAL, '..', 'Resultados_Globales')
+os.makedirs(RUTA_SALIDA, exist_ok=True)
+CHECKPOINT_FILE = os.path.join(RUTA_SALIDA, f"checkpoint_{NOMBRE_MODULO}.json")
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
 PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"]
 
@@ -249,37 +259,53 @@ TRIBUNALES_CIVIL = [
     {'id': '1403', 'nombre': '2º Juzgado de Letras de San Bernardo Ex 3°'},
 ]
 
-COMPETENCIA_CIVIL_CONFIG = {
-    "value": "3",
-    "selector_id": "fecTribunal",
-    "items": TRIBUNALES_CIVIL,
-    "item_key_id": "tribunal_id",
-    "item_key_nombre": "tribunal_nombre"
+COMPETENCIAS_CONFIG = {
+    "Civil": {
+        "value": "3", "selector_id": "fecTribunal", "items": TRIBUNALES_CIVIL,
+        "item_key_id": "tribunal_id", "item_key_nombre": "tribunal_nombre"
+    }
 }
 
-# Solo Civil
+# --- FIN: Configuración Centralizada ---
 
-def generar_tareas_civil(start_date_str, end_date_str):
+def generar_tareas(start_date_str, end_date_str, modulo_nombre="tribunales_civil"):
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
     current_date = start_date
     tareas = []
+
+    # Determinar incremento: semanal para tribunales_*, diario para otros
+    es_tribunales = modulo_nombre.startswith('tribunales_')
+    incremento = timedelta(weeks=1) if es_tribunales else timedelta(days=1)
+
     while current_date <= end_date:
+        fecha_inicio_web = current_date.strftime('%d/%m/%Y')
         fecha_id_base = current_date.strftime('%Y-%m-%d')
-        fecha_formato_web = current_date.strftime('%d/%m/%Y')
-        for item in COMPETENCIA_CIVIL_CONFIG["items"]:
-            tarea_id = f"civil_{fecha_id_base}_{item['id']}"
-            tarea = {
-                'id': tarea_id,
-                'fecha': fecha_formato_web,
-                'competencia_nombre': 'Civil',
-                'competencia_value': COMPETENCIA_CIVIL_CONFIG['value'],
-                'selector_id': COMPETENCIA_CIVIL_CONFIG['selector_id'],
-                COMPETENCIA_CIVIL_CONFIG["item_key_id"]: item['id'],
-                COMPETENCIA_CIVIL_CONFIG["item_key_nombre"]: item['nombre']
-            }
-            tareas.append(tarea)
-        current_date += timedelta(days=1)
+        
+        if es_tribunales:
+            # Para módulos tribunales: rango semanal
+            fecha_hasta = min(current_date + timedelta(days=6), end_date)
+            fecha_desde_str = current_date.strftime('%d/%m/%Y')
+            fecha_hasta_str = fecha_hasta.strftime('%d/%m/%Y')
+            fecha_id_base = f"{current_date.strftime('%Y-%m-%d')}_to_{fecha_hasta.strftime('%Y-%m-%d')}"
+        else:
+            # Para otros módulos: día individual
+            fecha_desde_str = fecha_hasta_str = current_date.strftime('%d/%m/%Y')
+            fecha_id_base = current_date.strftime('%Y-%m-%d')
+
+        for comp_nombre, comp_data in COMPETENCIAS_CONFIG.items():
+            for item in comp_data["items"]:
+                tarea_id = f"{comp_nombre.lower()}_{fecha_id_base}_{item['id']}"
+                tarea = {
+                    'id': tarea_id, 'ruta_salida': RUTA_SALIDA,
+                    'fecha_desde_str': fecha_desde_str, 'fecha_hasta_str': fecha_hasta_str,
+                    'competencia_nombre': comp_nombre, 'competencia_value': comp_data['value'],
+                    'selector_id': comp_data['selector_id'],
+                    comp_data["item_key_id"]: item['id'], comp_data["item_key_nombre"]: item['nombre']
+                }
+                tareas.append(tarea)
+        
+        current_date += incremento
     return tareas
 
 def rotar_y_verificar_ip(headless_mode):
@@ -324,7 +350,7 @@ def main():
     parser.add_argument('--delay_tanda', type=int, default=90, help="Segundos de espera entre el inicio de cada tanda.")
     args = parser.parse_args()
 
-    tasks = generar_tareas_civil(args.desde, args.hasta) if args.modo == 'historico' else []
+    tasks = generar_tareas(args.desde, args.hasta, "tribunales_civil") if args.modo == 'historico' else []
 
     manager = multiprocessing.Manager()
     lock = manager.Lock()
@@ -427,8 +453,40 @@ def main():
                 print("\nTodas las tareas se completaron sin detectar bloqueos.")
 
 
+def limpiar_perfiles_antiguos():
+    """Busca y elimina todos los directorios de perfiles de Chrome de ejecuciones anteriores."""
+    print("--- Iniciando limpieza de perfiles de navegador antiguos... ---")
+    temp_dir = tempfile.gettempdir()
+    
+    # Patrones para encontrar todos los perfiles relevantes
+    patrones = [
+        os.path.join(temp_dir, "pjud_profile_*"),
+        os.path.join(temp_dir, "pjud_verification_profile_*")
+    ]
+    
+    perfiles_a_borrar = []
+    for patron in patrones:
+        perfiles_a_borrar.extend(glob.glob(patron))
+
+    if not perfiles_a_borrar:
+        print("--- No se encontraron perfiles antiguos para limpiar. ---")
+        return
+
+    borrados = 0
+    for perfil in perfiles_a_borrar:
+        try:
+            shutil.rmtree(perfil)
+            borrados += 1
+        except Exception as e:
+            # Usar print o logging.warning si está configurado
+            print(f"ADVERTENCIA: No se pudo borrar el perfil huérfano '{perfil}'. Causa: {e}")
+            
+    print(f"--- Limpieza finalizada. Se eliminaron {borrados}/{len(perfiles_a_borrar)} perfiles. ---")
+
 if __name__ == "__main__":
     multiprocessing.freeze_support()
+    limpiar_perfiles_antiguos()
+    forzar_cierre_navegadores() # Cierre forzado al inicio
     while True:
         main()
         # Tras finalizar main(), revisamos si quedan tareas pendientes

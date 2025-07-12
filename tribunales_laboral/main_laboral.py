@@ -1,4 +1,4 @@
-# Archivo: main.py
+# Archivo: main_laboral.py
 
 import argparse
 import multiprocessing
@@ -6,14 +6,19 @@ import json
 import os
 import time
 import random
+import shutil
+import glob
+import tempfile
+import logging
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from worker_laboral import scrape_worker
 from verificacion_worker_laboral import verificacion_worker
-from verificacion_worker_laboral import verificacion_worker
 from utils_laboral import forzar_cierre_navegadores, quedan_procesos_navegador
 
-CHECKPOINT_FILE = 'checkpoint.json'
+# Configuración centralizada
+RUTA_SALIDA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'Resultados_Globales')
+CHECKPOINT_FILE = os.path.join(RUTA_SALIDA, 'checkpoint_tribunales_laboral.json')
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
 PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"]
 
@@ -169,7 +174,7 @@ TRIBUNALES_LABORAL = [
     {'id': '9006', 'nombre': 'Juzgado de Prueba 5°'},
 ]
 
-COMPETENCIA_LABORAL_CONFIG = {
+COMPETENCIAS_CONFIG = {
     "value": "4",  # Ajusta el value si es distinto para laboral
     "selector_id": "fecTribunal",
     "items": TRIBUNALES_LABORAL,
@@ -177,27 +182,67 @@ COMPETENCIA_LABORAL_CONFIG = {
     "item_key_nombre": "tribunal_nombre"
 }
 
-def generar_tareas_laboral(start_date_str, end_date_str):
+def limpiar_perfiles_antiguos():
+    """Limpia perfiles antiguos de Chrome para evitar acumulación de archivos temporales."""
+    try:
+        temp_dir = tempfile.gettempdir()
+        patron_perfiles = os.path.join(temp_dir, "pjud_profile_*")
+        perfiles_encontrados = glob.glob(patron_perfiles)
+        
+        for perfil in perfiles_encontrados:
+            try:
+                if os.path.isdir(perfil):
+                    shutil.rmtree(perfil)
+                    logging.info(f"Perfil eliminado: {perfil}")
+            except Exception as e:
+                logging.warning(f"No se pudo eliminar el perfil {perfil}: {e}")
+        
+        if perfiles_encontrados:
+            print(f"[LIMPIEZA] Se eliminaron {len(perfiles_encontrados)} perfiles antiguos de Chrome.")
+        else:
+            print("[LIMPIEZA] No se encontraron perfiles antiguos para eliminar.")
+            
+    except Exception as e:
+        logging.error(f"Error durante la limpieza de perfiles: {e}")
+
+def generar_tareas(start_date_str, end_date_str, modulo_nombre="tribunales_laboral"):
+    """Genera tareas con rangos semanales para módulos tribunales_* y diarios para otros."""
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
     current_date = start_date
     tareas = []
+    
+    # Determinar incremento: semanal para tribunales_*, diario para otros
+    es_tribunales = modulo_nombre.startswith('tribunales_')
+    incremento = timedelta(weeks=1) if es_tribunales else timedelta(days=1)
+    
     while current_date <= end_date:
-        fecha_id_base = current_date.strftime('%Y-%m-%d')
-        fecha_formato_web = current_date.strftime('%d/%m/%Y')
-        for item in COMPETENCIA_LABORAL_CONFIG["items"]:
+        if es_tribunales:
+            # Para módulos tribunales: rango semanal
+            fecha_hasta = min(current_date + timedelta(days=6), end_date)
+            fecha_desde_str = current_date.strftime('%d/%m/%Y')
+            fecha_hasta_str = fecha_hasta.strftime('%d/%m/%Y')
+            fecha_id_base = f"{current_date.strftime('%Y-%m-%d')}_to_{fecha_hasta.strftime('%Y-%m-%d')}"
+        else:
+            # Para otros módulos: día individual
+            fecha_desde_str = fecha_hasta_str = current_date.strftime('%d/%m/%Y')
+            fecha_id_base = current_date.strftime('%Y-%m-%d')
+        
+        for item in COMPETENCIAS_CONFIG["items"]:
             tarea_id = f"laboral_{fecha_id_base}_{item['id']}"
             tarea = {
                 'id': tarea_id,
-                'fecha': fecha_formato_web,
+                'fecha_desde_str': fecha_desde_str,
+                'fecha_hasta_str': fecha_hasta_str,
                 'competencia_nombre': 'Laboral',
-                'competencia_value': COMPETENCIA_LABORAL_CONFIG['value'],
-                'selector_id': COMPETENCIA_LABORAL_CONFIG['selector_id'],
-                COMPETENCIA_LABORAL_CONFIG["item_key_id"]: item['id'],
-                COMPETENCIA_LABORAL_CONFIG["item_key_nombre"]: item['nombre']
+                'competencia_value': COMPETENCIAS_CONFIG['value'],
+                'selector_id': COMPETENCIAS_CONFIG['selector_id'],
+                'ruta_salida': RUTA_SALIDA,
+                COMPETENCIAS_CONFIG["item_key_id"]: item['id'],
+                COMPETENCIAS_CONFIG["item_key_nombre"]: item['nombre']
             }
             tareas.append(tarea)
-        current_date += timedelta(days=1)
+        current_date += incremento
     return tareas
 
 def rotar_y_verificar_ip(headless_mode):
@@ -242,7 +287,7 @@ def main():
     parser.add_argument('--delay_tanda', type=int, default=90, help="Segundos de espera entre el inicio de cada tanda.")
     args = parser.parse_args()
 
-    tasks = generar_tareas_laboral(args.desde, args.hasta) if args.modo == 'historico' else []
+    tasks = generar_tareas(args.desde, args.hasta, "tribunales_laboral") if args.modo == 'historico' else []
 
     manager = multiprocessing.Manager()
     lock = manager.Lock()
@@ -346,6 +391,10 @@ def main():
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
+    
+    # Limpiar perfiles antiguos al inicio
+    limpiar_perfiles_antiguos()
+    
     while True:
         main()
         # Tras finalizar main(), revisamos si quedan tareas pendientes

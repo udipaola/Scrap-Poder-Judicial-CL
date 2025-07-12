@@ -5,6 +5,7 @@ import pandas as pd
 import random
 import json
 import os
+import tempfile
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
@@ -12,7 +13,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 from utils_apelaciones import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
 
-CHECKPOINT_FILE = 'checkpoint.json'
+# El checkpoint file se obtendrá de la tarea
 
 def scrape_worker(task_info):
     task, lock, headless_mode, stop_event = task_info
@@ -42,19 +43,25 @@ def scrape_worker(task_info):
     
     if headless_mode:
         print(f"[{task_id}] Ejecutando en modo HEADLESS.")
-        options.add_argument("--headless")
-        options.add_argument("--window-size=1920,1080")
-    else:
-        print(f"[{task_id}] Ejecutando en modo VISIBLE (fuera de pantalla).")
         # Posiciona la ventana fuera del área visible del monitor
         options.add_argument("--window-position=-2000,0")
+        options.add_argument("--window-size=1920,1080")
+    else:
+        print(f"[{task_id}] Ejecutando en modo VISIBLE.")
         # Inicia la ventana maximizada para un comportamiento estable
         options.add_argument("--start-maximized")
         # Deshabilita la barra "Chrome está siendo controlado..."
         options.add_argument("--disable-infobars")
 
+    profile_path = None
     driver = None
     try:
+        # Define un path de perfil único y predecible DENTRO del try
+        profile_path = os.path.join(tempfile.gettempdir(), f"pjud_profile_{task_id}")
+        
+        # Asigna el perfil único a la instancia de Chrome
+        options.add_argument(f"--user-data-dir={profile_path}")
+        
         driver = webdriver.Chrome(options=options)
         driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
             'source': "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
@@ -71,10 +78,14 @@ def scrape_worker(task_info):
             
         print(f"[{task_id}] Acceso verificado. Procediendo con el scraping.")
 
-        # --- Aplicación de filtros ---
-        fecha_str = task['fecha']
+        # --- Extracción de información de la tarea ---
+        ruta_salida = task['ruta_salida']
+        fecha_desde_str = task['fecha_desde_str']
+        fecha_hasta_str = task['fecha_hasta_str']
+        fecha_str = task['fecha']  # Para compatibilidad con el código existente
         corte_id = task['corte_id']
         corte_nombre = task['corte_nombre']
+        checkpoint_file = os.path.join(ruta_salida, 'checkpoint_apelaciones.json')
         
         try:
             print(f"[{task_id}] Asegurando clic en 'Búsqueda por Fecha'...")
@@ -110,7 +121,8 @@ def scrape_worker(task_info):
             wait.until(EC.element_to_be_clickable((By.ID, "btnConConsultaFec"))).click()
         except Exception as e:
             print(f"Error grave en worker {task_id} durante la configuración de filtros: {e}")
-            driver.save_screenshot(f"error_screenshot_{task_id}.png")
+            screenshot_path = os.path.join(ruta_salida, f"error_screenshot_{task_id}.png")
+            driver.save_screenshot(screenshot_path)
             stop_event.set()
             return f"ERROR:{task_id}"
 
@@ -198,13 +210,14 @@ def scrape_worker(task_info):
             else: 
                 if registros_pagina:
                     df = pd.DataFrame(registros_pagina)
-                    header = not os.path.exists(f"resultados_{task_id}.csv")
-                    df.to_csv(f"resultados_{task_id}.csv", mode='a', sep=';', index=False, encoding='utf-8-sig', header=header)
+                    csv_path = os.path.join(ruta_salida, f"resultados_{task_id}.csv")
+                    header = not os.path.exists(csv_path)
+                    df.to_csv(csv_path, mode='a', sep=';', index=False, encoding='utf-8-sig', header=header)
                 
                 with lock:
                     try:
                         # Abrir en modo lectura y escritura, crear si no existe
-                        with open(CHECKPOINT_FILE, 'r+') as f:
+                        with open(checkpoint_file, 'r+') as f:
                             checkpoint_data = json.load(f)
                     except (FileNotFoundError, json.JSONDecodeError):
                         checkpoint_data = {}
@@ -216,7 +229,7 @@ def scrape_worker(task_info):
                     }
 
                     # Escribir de vuelta al archivo
-                    with open(CHECKPOINT_FILE, 'w') as f:
+                    with open(checkpoint_file, 'w') as f:
                         json.dump(checkpoint_data, f, indent=4)
                     
                     print(f"[{task_id}] Checkpoint guardado en página {pagina_actual}.")
@@ -259,7 +272,7 @@ def scrape_worker(task_info):
         if not stop_event.is_set():
             with lock:
                 try:
-                    with open(CHECKPOINT_FILE, 'r+') as f:
+                    with open(checkpoint_file, 'r+') as f:
                         checkpoint_data = json.load(f)
                 except (FileNotFoundError, json.JSONDecodeError):
                     checkpoint_data = {}
@@ -270,7 +283,7 @@ def scrape_worker(task_info):
                 else:
                     checkpoint_data[task_id] = {'status': 'completed'}
                 
-                with open(CHECKPOINT_FILE, 'w') as f:
+                with open(checkpoint_file, 'w') as f:
                     json.dump(checkpoint_data, f, indent=4)
 
             print(f"[{task_id}] Tarea completada y marcada en checkpoint.")

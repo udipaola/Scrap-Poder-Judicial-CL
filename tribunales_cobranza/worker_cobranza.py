@@ -12,6 +12,7 @@ import pandas as pd
 import random
 import json
 import os
+import tempfile
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
@@ -19,14 +20,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 from utils_cobranza import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
 
-CHECKPOINT_FILE = 'checkpoint.json'
-
 import tempfile
 
 def scrape_worker(task_info):
     task, lock, headless_mode, stop_event = task_info
     task_id = task['id']
-    #user_data_dir = tempfile.mkdtemp() # Crea un directorio temporal único
 
     # --- Verificación inicial del evento de parada ---
     if stop_event.is_set():
@@ -34,19 +32,24 @@ def scrape_worker(task_info):
         return f"STOPPED_BY_EVENT:{task_id}"
 
     options = webdriver.ChromeOptions()
-    #options.add_argument(f"--user-data-dir={user_data_dir}") # Usa el directorio único
     options.add_argument('--disable-blink-features=AutomationControlled')
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
     options.add_argument('--log-level=3')
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     
-    #options.add_argument("--window-position=-2000,0")
     if headless_mode:
-        options.add_argument("--headless")
+        options.add_argument("--window-position=-2000,0")
 
+    profile_path = None
     driver = None
     try:
+        # Define un path de perfil único y predecible DENTRO del try
+        profile_path = os.path.join(tempfile.gettempdir(), f"pjud_profile_{task_id}")
+        
+        # Asigna el perfil único a la instancia de Chrome
+        options.add_argument(f"--user-data-dir={profile_path}")
+        
         driver = webdriver.Chrome(options=options)
         driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
             'source': "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
@@ -62,11 +65,20 @@ def scrape_worker(task_info):
         print(f"[{task_id}] Acceso verificado. Procediendo con el scraping.")
 
         # TAREA 2.1: Reemplazar el desempaquetado de la tarea por esta versión genérica.
-    
-        fecha_str = task['fecha']
+        
+        # Extraer información de la nueva estructura de tareas
+        ruta_salida = task['ruta_salida']
+        fecha_desde_str = task['fecha_desde_str']
+        fecha_hasta_str = task['fecha_hasta_str']
         competencia_nombre = task['competencia_nombre']
         competencia_value = task['competencia_value']
         selector_id = task['selector_id']
+        
+        # Crear directorio de salida si no existe
+        os.makedirs(ruta_salida, exist_ok=True)
+        
+        # Definir archivo de checkpoint centralizado
+        CHECKPOINT_FILE = os.path.join(ruta_salida, 'checkpoint_tribunales_cobranza.json')
 
         # Determinar las claves correctas para el ID y el nombre del ítem
         item_id_key = next((key for key in task if key.endswith('_id') and key != 'id' and key != 'selector_id'), None)
@@ -111,8 +123,8 @@ def scrape_worker(task_info):
             # Paso 5: Ingresar fechas y buscar
             input_desde = driver.find_element(By.ID, "fecDesde")
             input_hasta = driver.find_element(By.ID, "fecHasta")
-            driver.execute_script(f"arguments[0].removeAttribute('readonly'); arguments[0].value='{fecha_str}';", input_desde)
-            driver.execute_script(f"arguments[0].removeAttribute('readonly'); arguments[0].value='{fecha_str}';", input_hasta)
+            driver.execute_script(f"arguments[0].removeAttribute('readonly'); arguments[0].value='{fecha_desde_str}';", input_desde)
+            driver.execute_script(f"arguments[0].removeAttribute('readonly'); arguments[0].value='{fecha_hasta_str}';", input_hasta)
             time.sleep(2)
             wait.until(EC.element_to_be_clickable((By.ID, "btnConConsultaFec"))).click()
             
@@ -120,7 +132,13 @@ def scrape_worker(task_info):
             time.sleep(3);
             
         except Exception as e:
-            # ... (manejo de error en la configuración de filtros) ...
+            # Guardar screenshot de error en la ruta centralizada
+            error_screenshot_path = os.path.join(ruta_salida, f"error_filtros_{task_id}.png")
+            try:
+                driver.save_screenshot(error_screenshot_path)
+                print(f"[{task_id}] Screenshot de error guardado en: {error_screenshot_path}")
+            except Exception:
+                pass
             print(f"Error en la configuracion de filtros: {e}")
 
         # --- FIN: LÓGICA DE SELECCIÓN DE FILTROS UNIFICADA ---
@@ -225,9 +243,10 @@ def scrape_worker(task_info):
             # Guardar datos y checkpoint
             if registros_pagina:
                 df = pd.DataFrame(registros_pagina)
-                header = not os.path.exists(f"resultados_{task_id}.csv")
+                csv_path = os.path.join(ruta_salida, f"resultados_{task_id}.csv")
+                header = not os.path.exists(csv_path)
                 df = df[["NOMBRE", "DOCUMENTO", "CARGO", "INSTITUCION", "OBSERVACIONES"]]  # Orden y columnas fijas
-                df.to_csv(f"resultados_{task_id}.csv", mode='a', sep=';', index=False, encoding='utf-8-sig', header=header)
+                df.to_csv(csv_path, mode='a', sep=';', index=False, encoding='utf-8-sig', header=header)
             
             with lock:
                 try:

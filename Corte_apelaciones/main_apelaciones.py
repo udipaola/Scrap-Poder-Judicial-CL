@@ -6,15 +6,53 @@ import json
 import os
 import time
 import random
+import shutil
+import glob
+import tempfile
+import logging
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from worker_apelaciones import scrape_worker
 from verificacion_worker_apelaciones import verificacion_worker
 from utils_apelaciones import forzar_cierre_navegadores, quedan_procesos_navegador
 
-CHECKPOINT_FILE = 'checkpoint.json'
+# Configuración centralizada
+RUTA_SALIDA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'Resultados_Globales')
+CHECKPOINT_FILE = os.path.join(RUTA_SALIDA, 'checkpoint_apelaciones.json')
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
 PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"]
+
+# Asegurar que el directorio de salida existe
+os.makedirs(RUTA_SALIDA, exist_ok=True)
+
+def limpiar_perfiles_antiguos():
+    """Busca y elimina todos los directorios de perfiles de Chrome de ejecuciones anteriores."""
+    print("--- Iniciando limpieza de perfiles de navegador antiguos... ---")
+    temp_dir = tempfile.gettempdir()
+    
+    # Patrones para encontrar todos los perfiles relevantes
+    patrones = [
+        os.path.join(temp_dir, "pjud_profile_*"),
+        os.path.join(temp_dir, "pjud_verification_profile_*")
+    ]
+    
+    perfiles_a_borrar = []
+    for patron in patrones:
+        perfiles_a_borrar.extend(glob.glob(patron))
+
+    if not perfiles_a_borrar:
+        print("--- No se encontraron perfiles antiguos para limpiar. ---")
+        return
+
+    borrados = 0
+    for perfil in perfiles_a_borrar:
+        try:
+            shutil.rmtree(perfil)
+            borrados += 1
+        except Exception as e:
+            print(f"ADVERTENCIA: No se pudo borrar el perfil huérfano '{perfil}'. Causa: {e}")
+            
+    print(f"--- Limpieza finalizada. Se eliminaron {borrados}/{len(perfiles_a_borrar)} perfiles. ---")
 
 CORTES_APELACIONES = [
     {'id': '10', 'nombre': 'C.A. de Arica'},
@@ -36,22 +74,28 @@ CORTES_APELACIONES = [
     {'id': '91', 'nombre': 'C.A. de San Miguel'}
 ]
 
-def generar_tareas(start_date_str, end_date_str):
+def generar_tareas(start_date_str, end_date_str, module_name='Corte_apelaciones'):
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
     current_date = start_date
     tareas = []
+    
+    # Para módulos Corte, usar rangos diarios
     while current_date <= end_date:
-        fecha_id_base = current_date.strftime('%Y-%m-%d')
+        fecha_desde_str = current_date.strftime('%Y-%m-%d')
+        fecha_hasta_str = current_date.strftime('%Y-%m-%d')
         fecha_formato_web = current_date.strftime('%d/%m/%Y')
+        
         for corte in CORTES_APELACIONES:
-            # El ID de la tarea ahora es único para la combinación fecha-corte
-            tarea_id = f"{fecha_id_base}_{corte['id']}"
+            tarea_id = f"{fecha_desde_str}_{corte['id']}"
             tareas.append({
                 'id': tarea_id,
                 'fecha': fecha_formato_web,
+                'fecha_desde_str': fecha_desde_str,
+                'fecha_hasta_str': fecha_hasta_str,
                 'corte_id': corte['id'],
-                'corte_nombre': corte['nombre']
+                'corte_nombre': corte['nombre'],
+                'ruta_salida': RUTA_SALIDA
             })
         current_date += timedelta(days=1)
     return tareas
@@ -204,7 +248,11 @@ def main():
                 print("\nTodas las tareas se completaron sin detectar bloqueos.")
 
 if __name__ == "__main__":
+    # La limpieza debe ser el primer paso, antes de iniciar cualquier proceso
+    limpiar_perfiles_antiguos()
+    
     multiprocessing.freeze_support()
+    
     while True:
         main()
         # Tras finalizar main(), revisamos si quedan tareas pendientes

@@ -1,6 +1,9 @@
 # Archivo: verificacion_worker.py
 
 import time
+import tempfile
+import os
+import uuid
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -18,15 +21,20 @@ def verificacion_worker(task):
 
     for intento in range(MAX_REINTENTOS_VERIFICACION):
         print(f"[VERIFICADOR - Intento {intento + 1}/{MAX_REINTENTOS_VERIFICACION}] Iniciando...")
+        profile_path = None
         driver = None
         try:
+            # Define un path de perfil único y predecible DENTRO del try
+            profile_path = os.path.join(tempfile.gettempdir(), f"pjud_verification_profile_{uuid.uuid4()}")
+            
             options = webdriver.ChromeOptions()
+            # Asigna el perfil único a la instancia de Chrome
+            options.add_argument(f"--user-data-dir={profile_path}")
             options.add_argument('--disable-blink-features=AutomationControlled')
             options.add_experimental_option("excludeSwitches", ["enable-automation"])
             options.add_experimental_option('useAutomationExtension', False)
-            options.add_argument("--window-position=-2000,0")
             if headless_mode:
-                options.add_argument("--headless")
+                options.add_argument("--window-position=-2000,0")
 
             driver = webdriver.Chrome(options=options)
             driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
