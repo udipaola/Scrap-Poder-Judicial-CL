@@ -17,7 +17,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
-from utils_tribunales_penal import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
+from utils_penal import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
 
 # CHECKPOINT_FILE será extraído de la tarea
 
@@ -46,9 +46,8 @@ def scrape_worker(task_info):
         options.add_argument('--log-level=3')
         options.add_experimental_option('excludeSwitches', ['enable-logging'])
         
-        options.add_argument("--window-position=-2000,0")
         if headless_mode:
-            options.add_argument("--headless")
+            options.add_argument("--window-position=-2000,0")
         driver = webdriver.Chrome(options=options)
         driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
             'source': "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
@@ -181,6 +180,19 @@ def scrape_worker(task_info):
                     caratulado = celdas[headers_principales.get('Caratulado', 4)].text
                     fecha_ingreso = celdas[headers_principales.get('Fecha Ingreso', 5)].text
                     estado_causa = celdas[headers_principales.get('Estado Causa', 6)].text
+                    
+                    # Detección rápida de causas reservadas
+                    if "reservada" in caratulado.lower() or "reservada" in estado_causa.lower():
+                        print(f"[{task_id}] Causa reservada detectada - RIT: {rit}, omitiendo procesamiento de modal")
+                        observaciones = f"RIT: {rit} | RUC: {ruc} | Tribunal: {tribunal} | Caratulado: {caratulado} | Fecha Ingreso: {fecha_ingreso} | Estado Causa: {estado_causa} | CAUSA RESERVADA"
+                        registros_pagina.append({
+                            "NOMBRE": "CAUSA RESERVADA",
+                            "CARGO": "RESERVADA",
+                            "INSTITUCION": tribunal,
+                            "OBSERVACIONES": observaciones
+                        })
+                        continue
+                    
                     observaciones = f"RIT: {rit} | RUC: {ruc} | Tribunal: {tribunal} | Caratulado: {caratulado} | Fecha Ingreso: {fecha_ingreso} | Estado Causa: {estado_causa}"
                     # Click en la lupa (detalle)
                     try:
@@ -188,16 +200,54 @@ def scrape_worker(task_info):
                         from selenium.webdriver import ActionChains
                         ActionChains(driver).move_to_element(boton_detalle).click().perform()
                         print(f"[{task_id}] Click real en lupa ejecutado, esperando modal penal visible...")
-                        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#modalDetallePenal")))
+                        
+                        # Detección rápida de modales con timeout reducido
+                        modal_selector = None
+                        fast_wait = WebDriverWait(driver, 3)  # Timeout reducido para detección rápida
+                        try:
+                            fast_wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#modalDetallePenal")))
+                            modal_selector = "#modalDetallePenal"
+                            print(f"[{task_id}] Modal #modalDetallePenal detectado")
+                        except TimeoutException:
+                            try:
+                                fast_wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#modalDetallePenalUnificado")))
+                                modal_selector = "#modalDetallePenalUnificado"
+                                print(f"[{task_id}] Modal #modalDetallePenalUnificado detectado")
+                            except TimeoutException:
+                                raise Exception("No se pudo detectar ningún modal de detalle en tiempo esperado")
                     except Exception as e_click:
                         print(f"[{task_id}] Error al hacer click en la lupa o esperar modal: {e_click}")
                         continue
                     # Extraer datos adicionales de cabecera y litigantes
                     try:
                         print(f"[{task_id}] Modal visible, extrayendo cabecera...")
+                        
+                        # Verificación rápida de causa reservada en el modal
+                        try:
+                            modal_content = driver.find_element(By.CSS_SELECTOR, modal_selector).text.lower()
+                            if "reservada" in modal_content and "acta" in modal_content:
+                                print(f"[{task_id}] Causa reservada detectada en modal - RIT: {rit}")
+                                observaciones_reservada = f"RIT: {rit} | RUC: {ruc} | Tribunal: {tribunal} | Caratulado: {caratulado} | Fecha Ingreso: {fecha_ingreso} | Estado Causa: {estado_causa} | CAUSA RESERVADA (Modal)"
+                                registros_pagina.append({
+                                    "NOMBRE": "CAUSA RESERVADA",
+                                    "CARGO": "RESERVADA",
+                                    "INSTITUCION": tribunal,
+                                    "OBSERVACIONES": observaciones_reservada
+                                })
+                                # Cerrar modal y continuar
+                                try:
+                                    close_button = driver.find_element(By.CSS_SELECTOR, f"{modal_selector} .close")
+                                    close_button.click()
+                                    fast_wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, modal_selector)))
+                                except:
+                                    pass
+                                continue
+                        except Exception as e_reservada:
+                            print(f"[{task_id}] Error verificando causa reservada en modal: {e_reservada}")
+                        
                         datos_adicionales = {}
                         try:
-                            tabla_cabecera = driver.find_element(By.CSS_SELECTOR, "#modalDetallePenal table.table-titulos")
+                            tabla_cabecera = driver.find_element(By.CSS_SELECTOR, f"{modal_selector} table.table-titulos")
                             filas_cab = tabla_cabecera.find_elements(By.TAG_NAME, "tr")
                             for fila_cab in filas_cab:
                                 celdas_cab = fila_cab.find_elements(By.TAG_NAME, "td")
@@ -209,35 +259,81 @@ def scrape_worker(task_info):
                         except Exception as e:
                             print(f"[{task_id}] Error extrayendo cabecera: {e}")
                         print(f"[{task_id}] Previo al click en litigantes")
+                        # Intentar ambos tipos de pestañas de litigantes con timeout optimizado
+                        tab_selector = None
+                        table_selector = None
                         try:
-                            print(f"[{task_id}] Intentando click en pestaña litigantes...")
-                            tab_litigantes = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[href="#litigantesPen"]')))
+                            print(f"[{task_id}] Intentando click en pestaña litigantes (#litigantesPen)...")
+                            tab_litigantes = fast_wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[href="#litigantesPen"]')))
                             tab_litigantes.click()
-                            print(f"[{task_id}] Click en pestaña litigantes OK")
-                            time.sleep(0.5)
+                            tab_selector = "#litigantesPen"
+                            table_selector = "#litigantesPen table"
+                            print(f"[{task_id}] Click en pestaña litigantes (#litigantesPen) OK")
+                            time.sleep(0.3)  # Reducido de 0.5 a 0.3
                         except Exception as e:
-                            print(f"[{task_id}] Error al hacer click en la pestaña Litigantes: {e}")
-                        print(f"[{task_id}] Intentando extraer tabla de litigantes")
-                        try:
-                            tabla_litigantes = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#litigantesPen table")))
-                            filas_lit = tabla_litigantes.find_elements(By.XPATH, ".//tbody/tr")
-                            for fila_lit in filas_lit:
-                                celdas_lit = fila_lit.find_elements(By.TAG_NAME, "td")
-                                if len(celdas_lit) < 3:
-                                    continue
-                                # Mapeo correcto: situacion (td[0]), nombre (td[1])
-                                situacion = celdas_lit[0].text.strip()
-                                nombre = celdas_lit[1].text.strip()
-                                obs_extra = f" | Situación: {situacion}" if situacion else ""
-                                registros_pagina.append({
-                                    "NOMBRE": nombre,
-                                    "CARGO": situacion,
-                                    "INSTITUCION": tribunal,
-                                    "OBSERVACIONES": observaciones + obs_extra + (" | " + " | ".join([f"{k}: {v}" for k,v in datos_adicionales.items()]) if datos_adicionales else "")
-                                })
-                            print(f"[{task_id}] Extracción de litigantes OK")
-                        except Exception as e:
-                            print(f"[{task_id}] Error extrayendo tabla de litigantes: {e}")
+                            print(f"[{task_id}] Error con #litigantesPen: {e}. Intentando con #litigantes...")
+                            try:
+                                tab_litigantes = fast_wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[href="#litigantes"]')))
+                                tab_litigantes.click()
+                                tab_selector = "#litigantes"
+                                table_selector = "#litigantes table"
+                                print(f"[{task_id}] Click en pestaña litigantes (#litigantes) OK")
+                                time.sleep(0.3)  # Reducido de 0.5 a 0.3
+                            except Exception as e2:
+                                print(f"[{task_id}] Error al hacer click en ambas pestañas de Litigantes: {e2}")
+                        
+                        if tab_selector and table_selector:
+                            print(f"[{task_id}] Intentando extraer tabla de litigantes desde {table_selector}")
+                            try:
+                                print(f"[{task_id}] Esperando visibilidad de tabla: {table_selector}")
+                                tabla_litigantes = fast_wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, table_selector)))
+                                print(f"[{task_id}] Tabla visible, buscando filas...")
+                                filas_lit = tabla_litigantes.find_elements(By.XPATH, ".//tbody/tr")
+                                print(f"[{task_id}] Encontradas {len(filas_lit)} filas de litigantes")
+                                for idx, fila_lit in enumerate(filas_lit):
+                                     try:
+                                         print(f"[{task_id}] Procesando fila {idx+1}/{len(filas_lit)}")
+                                         celdas_lit = fila_lit.find_elements(By.TAG_NAME, "td")
+                                         print(f"[{task_id}] Fila {idx+1} tiene {len(celdas_lit)} celdas")
+                                         
+                                         if len(celdas_lit) < 2:
+                                             print(f"[{task_id}] Fila {idx+1} omitida: muy pocas celdas")
+                                             continue
+                                         
+                                         # Mapeo según el tipo de modal
+                                         if modal_selector == "#modalDetallePenalUnificado":
+                                             # Modal unificado: Participantes (td[0]), Persona (td[1]), Nombre (td[2])
+                                             if len(celdas_lit) >= 3:
+                                                 situacion = celdas_lit[0].text.strip()  # Participantes
+                                                 nombre = celdas_lit[2].text.strip()     # Nombre o Razón Social
+                                                 print(f"[{task_id}] Fila {idx+1} - Situación: '{situacion}', Nombre: '{nombre}'")
+                                             else:
+                                                 print(f"[{task_id}] Fila {idx+1} omitida: modal unificado requiere 3+ celdas")
+                                                 continue
+                                         else:
+                                             # Modal tradicional: situacion (td[0]), nombre (td[1])
+                                             situacion = celdas_lit[0].text.strip()
+                                             nombre = celdas_lit[1].text.strip()
+                                             print(f"[{task_id}] Fila {idx+1} - Situación: '{situacion}', Nombre: '{nombre}'")
+                                         
+                                         obs_extra = f" | Situación: {situacion}" if situacion else ""
+                                         registros_pagina.append({
+                                             "NOMBRE": nombre,
+                                             "CARGO": situacion,
+                                             "INSTITUCION": tribunal,
+                                             "OBSERVACIONES": observaciones + obs_extra + (" | " + " | ".join([f"{k}: {v}" for k,v in datos_adicionales.items()]) if datos_adicionales else "")
+                                         })
+                                         print(f"[{task_id}] Fila {idx+1} procesada exitosamente")
+                                     except Exception as e_fila:
+                                         print(f"[{task_id}] Error procesando fila {idx+1}: {e_fila}")
+                                         continue
+                                print(f"[{task_id}] Extracción de litigantes OK - Total registros: {len(registros_pagina)}")
+                            except Exception as e:
+                                print(f"[{task_id}] Error extrayendo tabla de litigantes: {e}")
+                                import traceback
+                                print(f"[{task_id}] Traceback: {traceback.format_exc()}")
+                        else:
+                            print(f"[{task_id}] No se pudo acceder a ninguna pestaña de litigantes")
                     except Exception as e_modal:
                         import traceback
                         print(f"[{task_id}] Error extrayendo litigantes: {e_modal}")
@@ -245,10 +341,16 @@ def scrape_worker(task_info):
                     finally:
                         # Cerrar modal
                         try:
-                            driver.find_element(By.CSS_SELECTOR, "#modalDetallePenal .close").click()
-                            wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, "#modalDetallePenal")))
-                        except Exception:
-                            pass
+                            print(f"[{task_id}] Intentando cerrar modal {modal_selector}")
+                            close_button = driver.find_element(By.CSS_SELECTOR, f"{modal_selector} .close")
+                            close_button.click()
+                            print(f"[{task_id}] Click en cerrar ejecutado, esperando invisibilidad...")
+                            wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, modal_selector)))
+                            print(f"[{task_id}] Modal cerrado exitosamente")
+                        except Exception as e:
+                            print(f"[{task_id}] Error cerrando modal: {e}")
+                            import traceback
+                            print(f"[{task_id}] Traceback cierre modal: {traceback.format_exc()}")
             except StaleElementReferenceException:
                 print(f"[{task_id}] Error de referencia estancada. Reintentando la página.")
                 continue
