@@ -48,7 +48,7 @@ class ScrapingExecutor:
             '6': {
                 'nombre': 'Tribunales Penal',
                 'directorio': 'tribunales_penal',
-                'archivo': 'main_tribunales_penal.py',
+                'archivo': 'main_penal.py',
                 'descripcion': 'Scraping de tribunales penales'
             }
         }
