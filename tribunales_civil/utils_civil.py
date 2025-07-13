@@ -2,9 +2,28 @@
 
 import os
 import time
+from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
+# Funciones de logging centralizadas
+def log_progress(task_id, total_workers, message):
+    """Log para mensajes de progreso esenciales"""
+    print(f"[Worker {task_id}] {message}")
+
+def log_error(task_id, total_workers, message):
+    """Log para errores críticos"""
+    print(f"[Worker {task_id}] ERROR: {message}")
+
+def log_debug(task_id, total_workers, message, debug_mode=False):
+    """Log para debug (solo visible si DEBUG_MODE está activado)"""
+    if debug_mode:
+        print(f"[Worker {task_id}] DEBUG: {message}")
+
+def log_worker_status(task_id, total_workers, status, details=""):
+    """Log conciso del estado del worker"""
+    print(f"Worker {task_id}/{total_workers}: {status} {details}")
 
 
 def forzar_cierre_navegadores():

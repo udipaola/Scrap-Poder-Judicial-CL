@@ -1,0 +1,420 @@
+<div class="modal in" id="modalDetallePenalUnificado" tabindex="-1" style="z-index: 1040; display: block;">
+    <div class="modal-dialog modal-lg">
+      <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">×</button>
+                <h4 class="modal-title" style="color:#337ab7;" title="Cod_tribunal:6 Crr_causa:400031926 Crr_cuaderno:10030078 Cod_competencia:8">
+				Detalle Causa 				</h4>
+            </div>
+        
+            <div class="modal-body">
+            
+                <div class="panel with-nav-tabs">
+                
+                    <div class="panel panel-default" style="background-color:#F9F9F9">
+                        <table class="table table-responsive table-titulos">
+                            <tbody>
+                                <tr>
+                                    <td>
+                                    <strong>ROL:</strong> E-2-2021 <span title="" class="label label-primary topTool"></span>
+                                    <strong> / RUC:</strong> 2000072236-8<span title="" class="label label-primary topTool"></span>
+                                    </td>
+                                    <td colspan="2"><strong>Fecha Ingreso:</strong> 06/01/2021</td>
+                                    <td><strong>Caratulado.:</strong>M.P. COQBO. C/ ALAN SEBASTIÁN VARGAS CORTÉS</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>Est. Adm.: </strong>
+                                        <span title="Legajo: " class="topTool">
+                                            Sin archivar                                        </span>
+                                    </td>
+                                    <td><strong>Procedimiento:</strong> Exhorto</td>
+                                    <td colspan="2"><strong>Ubicación:</strong> Otro tribunal</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Estado Procesal:</strong> Fallada o Concluida</td>
+                                    <td><strong>Etapa:</strong> Inicio de la acción</td>
+                                    <td colspan="2"><strong>Tribunal:</strong> Juzgado de Letras y Garantía de Pozo Almonte</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                                
+                        <table class="table table-responsive table-titulos">
+                                                    <tbody>
+                                <tr>
+                                    <td>
+                                        <strong>Texto Demanda:</strong>
+                                        <br><i class="fas fa-ban fa-lg" aria-hidden="true" style="color:#660000; cursor:no-drop;"></i>
+                                    </td>
+                                    <td>
+                                        <!--<strong>Anexos de la causa:</strong>
+                                        </br>
+                                        <i class="fas fa-ban fa-lg" aria-hidden="true" style="color:#660000; cursor:no-drop;"></i>-->
+                                    </td>
+                                    <td>
+                                        <strong>Acumulada:</strong>
+                                        <br>
+                                        <i class="fas fa-ban fa-lg" aria-hidden="true" style="color:#660000; cursor:no-drop;"></i>
+                                    </td>
+                                <!-- Bloque boton Certificado -->
+                      
+                                    <td>
+                                        <strong>Certificado de Envío:</strong><br>
+                                        <i class="fas fa-ban fa-lg" aria-hidden="true" style="color:#660000; cursor:no-drop;"></i>
+                                    </td>
+                              
+
+                                    <td id="boton">
+                                <!-- Bloque boton ebook 
+                                        <strong>Ebook:</strong>
+                                        <form name="form" action="misCausas/unificado/documentos/newebookunificado.php" method="get" target="_blank">
+                                            <input type='hidden' name='dtaEbook' value=''>
+                                            <a href="#" onClick='$(this).closest("form").submit();'>
+                                                <i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;" ></i>
+                                            </a>
+                                        </form>
+                                    </td>
+                                 Fin Bloque boton ebook -->
+                                </td></tr>
+                            </tbody>
+                                                    </table>
+                                
+                        
+                    </div>
+                    
+                    <div class="panel panel-default">
+                        <table class="table table-responsive table-titulos">
+                            <tbody>
+                                                            <tr>
+                                    <td>
+                                        <strong>Historia Causa Cuaderno</strong><br>
+                                        <select id="selCuaderno" class="form-control form-control-sm">
+                                            <option value="" selected="selected">1 - Principal</option>
+                                                                                    </select>
+                                    </td>
+                                    
+                                    <td>
+                                        &nbsp;
+                                    <!--
+                                        <strong>Informaci&oacute;n notificaciones receptor:</strong>
+                                        <br>
+
+                                        <a data-toggle="modal" href="#modalReceptor" onClick="receptorUnificado('');"><i class="fas fa-folder fa-2x" aria-hidden="true" style="cursor:pointer; color:#D7B926"></i></a>
+                                        -->
+                                    </td>
+                                    
+                                </tr>
+                                                            </tbody>
+                        </table>
+                    </div>
+                  
+                                        <div class="panel-heading">
+                        <ul class="nav nav-tabs" style="display:inline-block">
+                            <li class="active"><a data-toggle="tab" href="#historia">Historia</a></li>
+                            <li><a data-toggle="tab" href="#litigantes">Litigantes</a></li>
+                            <li><a data-toggle="tab" href="#notificaciones">Notificaciones</a></li>
+							<li><a data-toggle="tab" href="#relaciones">Relaciones</a></li>
+                            <!--
+                            <li><a data-toggle="tab" href="#escritos">Escritos por Resolver</a></li>
+                            
+                            <li><a data-toggle="tab" href="#exhortos">Exhortos</a></li>
+                            -->
+                        </ul>
+                    </div>
+                  
+                    <div class="tab-content" id="loadHistCuaderno">
+                        
+                        <div class="tab-pane fade in active" id="historia"> <!-- INICIO PANEL -->
+                        
+                            <div class="panel panel-default">
+                            
+                                <div class="table-responsive">
+                                    
+                                    <table class="table table-bordered table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Folio</th>
+                                                <th>Doc.</th>
+                                                <th>Anexo</th>
+                                                <th>Trámite</th>
+                                                <th>Desc. Trámite</th>
+                                                <th>Fec. Trámite</th>
+												<th>Fec. Firma</th>
+                                                <th>Estado</th>
+                                            </tr>                                               
+                                        </thead>
+                                        <tbody>
+                                                                                                <tr>
+                                                        <td>2</td>
+                                                        <td style="display: flex;align-items: center;">
+                                                        <form style="margin-right: 5%;" name="form" action="ADIR_871/unificado/documentos/docu.php" method="post" target="txtD">
+                                                            <input type="hidden" name="data" value="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc1MjI3OTMxOCwiZXhwIjoxNzUyMjgyOTE4LCJkYXRhIjoiNzZzSjZwTHRSbzRSdlVJeTBHWDZHdEFDTXJnaHRiWlwvNnhVUzYrNElBamM9In0.dfioBshKwVvZsqNypACgLEoAdTbHtlqCN90gdKQAHT4">
+                                                            <a href="#" onclick="$(this).closest(&quot;form&quot;).submit();">
+                                                                <i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+                                                            </a>
+                                                        </form>
+                                                        
+														 														 </td>
+                                                        <td>
+                                                    </td>
+                                                        <td>Audiencia</td>
+                                                        <td>Aud. control de detenc./ exhorto diligenciado- FAC</td>
+                                                        <td>06/01/2021</td>
+														<td>06/01/2021</td>
+                                                        <td>Realizada</td>
+                                                    </tr>
+                                                                                                        <tr>
+                                                        <td>1</td>
+                                                        <td style="display: flex;align-items: center;">
+                                                        <form style="margin-right: 5%;" name="form" action="ADIR_871/unificado/documentos/docu.php" method="post" target="txtD">
+                                                            <input type="hidden" name="data" value="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvb2ZpY2luYWp1ZGljaWFsdmlydHVhbC5wanVkLmNsIiwiYXVkIjoiaHR0cHM6XC9cL29maWNpbmFqdWRpY2lhbHZpcnR1YWwucGp1ZC5jbCIsImlhdCI6MTc1MjI3OTMxOCwiZXhwIjoxNzUyMjgyOTE4LCJkYXRhIjoiNzZzSjZwTHRSbzRSdlVJeTBHWDZHdkVtUHloSjZnM0wxRjBXSDlPQTF6QT0ifQ.A647msLNzmxhS_oEodoo6uCGtTf621iO4pN8QGtMCaI">
+                                                            <a href="#" onclick="$(this).closest(&quot;form&quot;).submit();">
+                                                                <i class="far fa-file-pdf fa-lg" aria-hidden="true" style="color:#ab5659; cursor:pointer;"></i>
+                                                            </a>
+                                                        </form>
+                                                        
+														 														 </td>
+                                                        <td>
+                                                    </td>
+                                                        <td>Resolución</td>
+                                                        <td>fija audiencia coimputado (pls)</td>
+                                                        <td>06/01/2021</td>
+														<td>06/01/2021</td>
+                                                        <td>Cerrado</td>
+                                                    </tr>
+                                                                                            </tbody>
+                                    </table>
+
+                                </div>
+                            </div>
+
+                        </div> <!-- FIN PANEL -->
+    
+                        <div class="tab-pane fade" id="litigantes"> <!-- INICIO PANEL -->
+                            <div class="panel panel-default">
+                            
+                                <div class="table-responsive">
+
+                                    <table class="table table-bordered table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Participantes</th>
+                                                                                                <th>Persona</th>
+                                                <th>Nombre o Razón Social</th>
+                                            </tr>                                               
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Colaborador</td>
+                                                                                                <td>Natural</td>
+                                                <td>  CARABINEROS</td>                
+                                            </tr>
+                                            <tr>
+                                                <td>Defensor penal público</td>
+                                                                                                <td>Natural</td>
+                                                <td>DELUCCHI HENRÍQUEZ PAMELA ANDREA</td>                
+                                            </tr>
+                                            <tr>
+                                                <td>Denunciado</td>
+                                                                                                <td>Natural</td>
+                                                <td>CORTÉS CARRILLO ACXEL ARIEL</td>                
+                                            </tr>
+                                            <tr>
+                                                <td>Denunciado</td>
+                                                                                                <td>Natural</td>
+                                                <td>VARGAS CORTÉS ALAN SEBASTIÁN</td>                
+                                            </tr>
+                                            <tr>
+                                                <td>Denunciante</td>
+                                                                                                <td>Jurídica</td>
+                                                <td>  M.P. COQBO.</td>                
+                                            </tr>
+                                            <tr>
+                                                <td>Denunciante</td>
+                                                                                                <td>Natural</td>
+                                                <td>SALINAS SANCHEZ ROBERTO CARLOS</td>                
+                                            </tr>
+                                            <tr>
+                                                <td>Fiscal</td>
+                                                                                                <td>Natural</td>
+                                                <td>ALMONACID MUÑOZ SERGIO ENRIQUE</td>                
+                                            </tr>
+                                            <tr>
+                                                <td>Víctima</td>
+                                                                                                <td>Natural</td>
+                                                <td>NN</td>                
+                                            </tr>
+                                      
+                                        </tbody>
+                                    </table>
+                                        
+                                </div>
+                            </div>
+                        </div> <!-- FIN PANEL -->
+
+
+                        <div class="tab-pane fade" id="notificaciones"> <!-- INICIO PANEL -->
+                            <div class="panel panel-default">
+                            
+                                <div class="table-responsive">
+
+                                    <table class="table table-bordered table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Tipo Notificación</th>
+                                                <th>Estado Notificación</th>
+                                                <th>Fecha Notificación</th>
+                                                <!--<th>Fecha Resuelto</th>
+                                                <th>Fecha Audiencia</th>-->
+                                                <th>Nombre</th>
+												<th>Estampado</th>
+                                                <th>Geo</th>
+                                            </tr>                                               
+                                        </thead>
+                                        <tbody>
+                                                                                            <tr>
+                                                    <td>Correo electrónico</td>
+                                                    <td>Realizada</td>
+                                                    <td>13-01-2021</td>
+                                                    <!--<td></td>
+                                                    <td></td>-->
+                                                    <td>DELUCCHI HENRÍQUEZ PAMELA ANDREA                 </td>
+													<td>
+																											<br><i class="fas fa-ban fa-lg" aria-hidden="true" style="color:#660000; cursor:no-drop;"></i>
+																	</td>
+                                                    <td>
+													                                                </td></tr>
+                                                                                                <tr>
+                                                    <td>Correo electrónico</td>
+                                                    <td>Realizada</td>
+                                                    <td>13-01-2021</td>
+                                                    <!--<td></td>
+                                                    <td></td>-->
+                                                    <td>ALMONACID MUÑOZ SERGIO ENRIQUE                </td>
+													<td>
+																											<br><i class="fas fa-ban fa-lg" aria-hidden="true" style="color:#660000; cursor:no-drop;"></i>
+																	</td>
+                                                    <td>
+													                                                </td></tr>
+                                                                                                <tr>
+                                                    <td>En audiencia</td>
+                                                    <td>Realizada</td>
+                                                    <td>06-01-2021</td>
+                                                    <!--<td></td>
+                                                    <td></td>-->
+                                                    <td>VARGAS CORTÉS ALAN SEBASTIÁN                </td>
+													<td>
+																											<br><i class="fas fa-ban fa-lg" aria-hidden="true" style="color:#660000; cursor:no-drop;"></i>
+																	</td>
+                                                    <td>
+													                                                </td></tr>
+                                                                                        </tbody>
+                                    </table>
+                                        
+                                </div>
+                            </div>
+                        </div> <!-- FIN PANEL -->
+						
+						<div class="tab-pane fade" id="relaciones"> 
+                            <div class="panel panel-default">
+                                
+                                <div class="table-responsive">
+
+                                    <table class="table table-bordered table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Nombre</th>
+                                                <th>Materia</th>
+                                                <th>Estado Causa</th>
+                                                <th>Fecha Cambio Estado</th>
+                                            </tr>                                               
+                                        </thead>
+                                        <tbody>
+										                                                <tr>
+                                                    <td>CORTÉS CARRILLO ACXEL ARIEL                   </td>
+                                                    <td>Lesiones graves. Art. 397 N° 2, Código Penal</td>
+                                                    <td>Concluida</td>
+                                                    <td>06/01/2021</td>
+                                                </tr>
+                                                                                                <tr>
+                                                    <td>VARGAS CORTÉS ALAN SEBASTIÁN                </td>
+                                                    <td>Lesiones Leves. Art. 494 N° 5</td>
+                                                    <td>Concluida</td>
+                                                    <td>06/01/2021</td>
+                                                </tr>
+                                                                                        </tbody>
+                                    </table>
+                                                
+                                </div>
+                            </div>
+                        </div> 
+						
+                        <!--
+                        <div class="tab-pane fade" id="escritos"> 
+                            <div class="panel panel-default">
+                                
+                                <div class="table-responsive">
+
+                                    <table class="table table-bordered table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Doc.</th>
+                                                <th>Anexo</th>
+                                                <th>Fecha de Ingreso</th>
+                                                <th>Tipo Escrito</th>
+                                                <th>Solicitante</th>
+                                            </tr>                                               
+                                        </thead>
+                                        <tbody>
+                                        </tbody>
+                                    </table>
+                                                
+                                </div>
+                            </div>
+                        </div> 
+                        
+                        -->
+                        <!--
+                        <div class="tab-pane fade" id="exhortos"> 
+                            <div class="panel panel-default">
+                            
+                                <div class="table-responsive">
+
+                                    <table class="table table-bordered table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Rol Origen</th>
+                                                <th>Tipo Exhorto</th>
+                                                <th>Rol Destino</th>
+                                                <th>Fecha Ordena Exhorto</th>
+                                                <th>Fecha Ingreso Exhorto</th>
+                                                <th>Tribunal Destino</th>
+                                                <th>Estado Exhorto</th>
+                                            </tr>                                               
+                                        </thead>
+                                        <tbody>
+
+                                        </tbody>
+                                    </table>
+                                        
+                                </div>
+                            </div>
+                        </div> 
+                        -->
+                    </div>   
+                               
+                </div>                
+             
+
+            
+        
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+            </div>
+             
+            
+        </div>
+    </div>
+
+</div></div>

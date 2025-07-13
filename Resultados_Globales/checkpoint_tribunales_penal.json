@@ -1,0 +1,50 @@
+{
+    "penal_2021-01-01_to_2021-01-07_14": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "penal_2024-01-01_to_2024-01-07_14": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "penal_2024-01-01_to_2024-01-07_51": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "penal_2024-01-01_to_2024-01-07_27": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "penal_2024-01-01_to_2024-01-07_47": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "penal_2024-01-01_to_2024-01-07_88": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "penal_2024-01-01_to_2024-01-07_6": {
+        "status": "in_progress",
+        "last_page": 1
+    },
+    "penal_2021-01-01_to_2021-01-07_6": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "penal_2021-01-01_to_2021-01-07_26": {
+        "status": "in_progress",
+        "last_page": 1
+    },
+    "penal_2021-01-01_to_2021-01-07_27": {
+        "status": "in_progress",
+        "last_page": 1
+    },
+    "penal_2021-01-01_to_2021-01-07_47": {
+        "status": "completed",
+        "last_page": 1
+    },
+    "penal_2021-01-01_to_2021-01-07_53": {
+        "status": "in_progress",
+        "last_page": 1
+    }
+}

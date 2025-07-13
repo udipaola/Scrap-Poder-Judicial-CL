@@ -17,19 +17,69 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException, ElementClickInterceptedException
+from selenium.webdriver.chrome.options import Options
+import threading
+import logging
 from utils_cobranza import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
+from selenium.webdriver.common.keys import Keys
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.pagination_utils import (
+    get_current_page_number,
+    navigate_to_next_page,
+    navigate_to_page,
+    apply_checkpoint_pagination
+)
+
+# Funciones de paginación movidas a utils/pagination_utils.py
+
+# Configurar logging para reducir ruido
+logging.getLogger('selenium').setLevel(logging.WARNING)
+logging.getLogger('urllib3').setLevel(logging.WARNING)
+logging.getLogger('requests').setLevel(logging.WARNING)
+
+# Sistema de logging ultra-limpio
+DEBUG_MODE = False  # Cambiar a True solo para debugging
+
+def log_progress(task_id, message):
+    """Log para mensajes de progreso esenciales"""
+    print(f"[Worker {task_id}] {message}")
+
+def log_error(task_id, message):
+    """Log para errores críticos"""
+    print(f"[Worker {task_id}] ERROR: {message}")
+
+def log_debug(task_id, message):
+    """Log para debug (solo visible si DEBUG_MODE está activado)"""
+    if DEBUG_MODE:
+        print(f"[Worker {task_id}] DEBUG: {message}")
+
+def log_worker_status(task_id, total_workers, status, details=""):
+    """Log conciso del estado del worker"""
+    print(f"Worker {task_id}/{total_workers}: {status} {details}")
 
 import tempfile
 
+# Constantes para manejo de errores
+MAX_REINTENTOS_PAGINA = 3
+
 def scrape_worker(task_info):
-    task, lock, headless_mode, stop_event = task_info
+    task, lock, headless_mode, stop_event, debug_mode = task_info
     task_id = task['id']
+    total_workers = task.get('total_workers', 1)
+    
+    # Configurar DEBUG_MODE basado en el parámetro recibido
+    global DEBUG_MODE
+    DEBUG_MODE = debug_mode
 
     # --- Verificación inicial del evento de parada ---
     if stop_event.is_set():
-        print(f"[{task_id}] Evento de parada activado. El worker no se iniciará.")
+        log_worker_status(task_id, total_workers, "DETENIDO", "evento de parada")
         return f"STOPPED_BY_EVENT:{task_id}"
+    
+    log_worker_status(task_id, total_workers, "INICIANDO", "verificando IP")
 
     options = webdriver.ChromeOptions()
     options.add_argument('--disable-blink-features=AutomationControlled')
@@ -57,12 +107,14 @@ def scrape_worker(task_info):
         wait = WebDriverWait(driver, 25)
 
         # --- Verificación de IP ---
+        log_debug(task_id, "Verificando bloqueo de IP")
+        
         if is_ip_blocked_con_reintentos(driver, task_id):
-            print(f"[{task_id}] Bloqueo de IP detectado al inicio. Señalando parada.")
+            log_worker_status(task_id, total_workers, "ERROR", "IP bloqueada")
             stop_event.set()
             return f"IP_BLOCKED:{task_id}"
             
-        print(f"[{task_id}] Acceso verificado. Procediendo con el scraping.")
+        log_worker_status(task_id, total_workers, "CONFIGURANDO", "filtros de búsqueda")
 
         # TAREA 2.1: Reemplazar el desempaquetado de la tarea por esta versión genérica.
         
@@ -96,27 +148,27 @@ def scrape_worker(task_info):
         # --- INICIO: LÓGICA DE SELECCIÓN DE FILTROS UNIFICADA ---
         try:
             # Paso 1: Navegar a la sección de búsqueda por fecha
-            print(f"[{task_id}] Asegurando clic en 'Búsqueda por Fecha'...")
+            log_debug(task_id, "Configurando filtros")
             wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[href="#BusFecha"]'))).click()
             
             # Paso 2: Seleccionar la Competencia principal (ej. Civil)
-            print(f"[{task_id}] Seleccionando Competencia '{competencia_nombre}'...")
+            log_debug(task_id, f"Seleccionando Competencia '{competencia_nombre}'")
             time.sleep(1) # Pequeña pausa para asegurar que la UI se estabilice
             select_competencia_element = wait.until(EC.visibility_of_element_located((By.ID, "fecCompetencia")))
             select_competencia = Select(select_competencia_element)
             select_competencia.select_by_value(competencia_value)
 
-            print(f"[{task_id}] Pausa de 2s para esperar la carga de tribunales...")
+            log_debug(task_id, "Esperando carga de tribunales")
             time.sleep(2)
 
             # Paso 3: Espera robusta con LAMBDA a que el menú secundario se pueble vía AJAX
-            print(f"[{task_id}] Esperando a que el menú #{selector_id} se pueble...")
+            log_debug(task_id, f"Esperando menú {selector_id}")
             wait.until(
                 lambda d: len(Select(d.find_element(By.ID, selector_id)).options) > 1
             )
 
             # Paso 4: Seleccionar el ítem específico (Corte o Tribunal)
-            print(f"[{task_id}] Seleccionando '{item_nombre}'...")
+            log_debug(task_id, f"Seleccionando '{item_nombre}'")
             select_item = Select(driver.find_element(By.ID, selector_id))
             select_item.select_by_value(item_id)
         
@@ -128,42 +180,61 @@ def scrape_worker(task_info):
             time.sleep(2)
             wait.until(EC.element_to_be_clickable((By.ID, "btnConConsultaFec"))).click()
             
-            print(f"[{task_id}] Pausa de 3s para esperar la carga de resultados...")
+            log_debug(task_id, "Esperando carga de resultados")
             time.sleep(3);
             
         except Exception as e:
-            # Guardar screenshot de error en la ruta centralizada
-            error_screenshot_path = os.path.join(ruta_salida, f"error_filtros_{task_id}.png")
+            log_error(task_id, f"Error en la configuración de filtros: {e}")
+            # Capturar screenshot de error
             try:
-                driver.save_screenshot(error_screenshot_path)
-                print(f"[{task_id}] Screenshot de error guardado en: {error_screenshot_path}")
-            except Exception:
-                pass
-            print(f"Error en la configuracion de filtros: {e}")
+                screenshot_path = os.path.join(ruta_salida, f"error_filtros_{task_id}.png")
+                driver.save_screenshot(screenshot_path)
+                log_progress(task_id, f"Screenshot de error guardado en: {screenshot_path}")
+            except Exception as screenshot_error:
+                log_error(task_id, f"Error al guardar screenshot: {screenshot_error}")
+            return f"ERROR_FILTROS:{task_id}"
 
         # --- FIN: LÓGICA DE SELECCIÓN DE FILTROS UNIFICADA ---
 
-        pagina_actual = task.get('pagina_a_empezar', 1)
-        print(f"[{task_id}] Iniciando en página {pagina_actual}.")
+        # Aplicación de checkpoint con verificación robusta usando utilidades centralizadas
+        pagina_inicial = task.get('pagina_a_empezar', 1)
+        if pagina_inicial > 1:
+            if apply_checkpoint_pagination(driver, pagina_inicial, task_id, total_workers, DEBUG_MODE, log_progress, log_error):
+                pagina_actual = pagina_inicial
+            else:
+                pagina_actual = 1
+        else:
+            pagina_actual = 1
+        
+        # Confirmar página actual
+        pagina_verificada = get_current_page_number(driver)
+        if pagina_verificada != pagina_actual:
+            log_progress(task_id, f"ADVERTENCIA: Discrepancia de página. Esperada: {pagina_actual}, Real: {pagina_verificada}")
+            pagina_actual = pagina_verificada
+        log_worker_status(task_id, total_workers, "PROCESANDO", f"página {pagina_actual}")
+
+        # Variables para manejo de reintentos
+        reintentos_pagina = 0
+        error_reintentar_pagina = False
 
         while not stop_event.is_set():
             registros_pagina = []
             
-            # TAREA 3.1: Añadir esta verificación para una salida rápida si no hay resultados.
+            # Verificar si hay mensaje de "No se encontraron resultados"
             try:
-                no_results_msg = driver.find_element(By.XPATH, "//*[contains(text(), 'No se han encontrado resultados')]")
-                if no_results_msg:
-                    print(f"[{task_id}] No se encontraron resultados. Finalizando tarea.")
-                    break
+                no_results = driver.find_element(By.XPATH, "//td[contains(text(), 'No se encontraron resultados')]")
+                log_progress(task_id, "Sin resultados - Finalizando")
+                break
             except NoSuchElementException:
-                # Es el comportamiento esperado si hay resultados, así que continuamos.
-                pass
+                pass  # Hay resultados, continuar
+            
+            log_debug(task_id, f"Procesando página {pagina_actual}")
 
-            # Espera a que la tabla de resultados se cargue
+            # Esperar a que la tabla se cargue
             try:
                 wait.until(EC.presence_of_element_located((By.ID, "dtaTableDetalleFecha")))
             except TimeoutException:
-                print(f"[{task_id}] Timeout: La tabla de resultados no apareció. Puede que no haya datos.")
+                log_error(task_id, f"Timeout en página {pagina_actual}")
                 break
 
             # Extraer datos de la página actual
@@ -188,8 +259,12 @@ def scrape_worker(task_info):
                     try:
                         boton_detalle = celdas[0].find_element(By.CSS_SELECTOR, ".toggle-modal")
                         driver.execute_script("arguments[0].click();", boton_detalle)
+                    except ElementClickInterceptedException as e_click:
+                        log_error(task_id, f"ElementClickInterceptedException en lupa: {e_click}")
+                        error_reintentar_pagina = True
+                        break
                     except Exception as e_click:
-                        print(f"[{task_id}] Error al hacer click en la lupa: {e_click}")
+                        log_error(task_id, f"Error al hacer click en la lupa: {e_click}")
                         continue
                     # Esperar modal y extraer datos adicionales de cabecera
                     try:
@@ -228,7 +303,7 @@ def scrape_worker(task_info):
                                 "OBSERVACIONES": observaciones + " | " + " | ".join([f"{k}: {v}" for k,v in datos_adicionales.items()])
                             })
                     except Exception as e_modal:
-                        print(f"[{task_id}] Error extrayendo litigantes: {e_modal}")
+                        log_error(task_id, f"Error extrayendo litigantes: {e_modal}")
                     finally:
                         # Cerrar modal
                         try:
@@ -236,17 +311,37 @@ def scrape_worker(task_info):
                             wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, "#modalDetalleCobranza")))
                         except Exception:
                             pass
+            except ElementClickInterceptedException as e:
+                log_error(task_id, f"ElementClickInterceptedException en procesamiento de filas: {e}")
+                error_reintentar_pagina = True
+                break
             except StaleElementReferenceException:
-                print(f"[{task_id}] Error de referencia estancada. Reintentando la página.")
+                log_error(task_id, "Error de referencia estancada. Reintentando la página")
                 continue
+
+            # Verificar si hay que reintentar por ElementClickInterceptedException
+            if error_reintentar_pagina:
+                reintentos_pagina += 1
+                if reintentos_pagina > MAX_REINTENTOS_PAGINA:
+                    log_error(task_id, f"Máximo de reintentos ({MAX_REINTENTOS_PAGINA}) alcanzado para página {pagina_actual}")
+                    driver.quit()
+                    return f"RETRY:{task_id}"
+                else:
+                    log_progress(task_id, f"Reintentando página {pagina_actual} (intento {reintentos_pagina}/{MAX_REINTENTOS_PAGINA})")
+                    time.sleep(3)
+                    error_reintentar_pagina = False
+                    continue
 
             # Guardar datos y checkpoint
             if registros_pagina:
+                log_progress(task_id, f"Guardando {len(registros_pagina)} registros")
                 df = pd.DataFrame(registros_pagina)
                 csv_path = os.path.join(ruta_salida, f"resultados_{task_id}.csv")
                 header = not os.path.exists(csv_path)
                 df = df[["NOMBRE", "DOCUMENTO", "CARGO", "INSTITUCION", "OBSERVACIONES"]]  # Orden y columnas fijas
                 df.to_csv(csv_path, mode='a', sep=';', index=False, encoding='utf-8-sig', header=header)
+            else:
+                log_debug(task_id, "Página sin registros")
             
             with lock:
                 try:
@@ -263,30 +358,20 @@ def scrape_worker(task_info):
                 with open(CHECKPOINT_FILE, 'w') as f:
                     json.dump(checkpoint_data, f, indent=4)
                 
-                print(f"[{task_id}] Checkpoint guardado en página {pagina_actual}.")
+                log_debug(task_id, f"Checkpoint guardado en página {pagina_actual}")
 
-            # Paginación
-            try:
-                pagina_activa_antes = driver.find_element(By.CSS_SELECTOR, "li.page-item.active > span.page-link").text.strip()
-                
-                boton_siguiente = wait.until(EC.element_to_be_clickable((By.ID, "sigId")))
-                driver.execute_script("arguments[0].click();", boton_siguiente)
-                
-                time.sleep(4);
-
-                pagina_activa_despues = driver.find_element(By.CSS_SELECTOR, "li.page-item.active > span.page-link").text.strip()
-
-                if pagina_activa_antes == pagina_activa_despues:
-                    print(f"[{task_id}] Fin de la paginación detectado.")
-                    break
-                else:
-                    print(f"[{task_id}] Paginación exitosa a la página {pagina_activa_despues}.")
-                    pagina_actual = int(pagina_activa_despues)
-                    
-            except (NoSuchElementException, TimeoutException):
-                print(f"[{task_id}] No se encontró el botón 'Siguiente'. Fin de la tarea.")
+            # Navegación a la siguiente página usando utilidades centralizadas
+            if not navigate_to_next_page(driver, task_id, total_workers, DEBUG_MODE, log_debug, log_error):
+                log_progress(task_id, "Fin de la paginación detectado")
                 break
-            continue
+            
+            # Obtener nueva página actual
+            pagina_actual = get_current_page_number(driver)
+            log_worker_status(task_id, total_workers, "PROCESANDO", f"página {pagina_actual}")
+                
+            # Resetear variables de control para la siguiente iteración
+            reintentos_pagina = 0
+            error_reintentar_pagina = False
 
         # --- Finalización ---
         if not stop_event.is_set():
@@ -305,17 +390,20 @@ def scrape_worker(task_info):
                 with open(CHECKPOINT_FILE, 'w') as f:
                     json.dump(checkpoint_data, f, indent=4)
 
-            print(f"[{task_id}] Tarea completada y marcada en checkpoint.")
+            log_progress(task_id, "Tarea completada")
+            log_worker_status(task_id, total_workers, "FINALIZADO", "")
             return f"COMPLETED:{task_id}"
         else:
-            print(f"[{task_id}] Tarea detenida por evento de parada.")
+            log_worker_status(task_id, total_workers, "DETENIDO", "por evento de parada")
             return f"STOPPED:{task_id}"
 
     except Exception as e:
         error_message = str(e).split('\n')[0]
-        print(f"Error grave en worker {task_id}: {type(e).__name__} - {error_message}")
+        log_worker_status(task_id, total_workers, "ERROR", f"{type(e).__name__}")
+        log_error(task_id, f"Error grave en worker: {error_message}")
         stop_event.set()
         return f"ERROR:{task_id}"
     finally:
         if driver:
             driver.quit()
+        log_worker_status(task_id, total_workers, "FINALIZADO", "")

@@ -118,6 +118,7 @@ def main():
     parser.add_argument('--headless', action='store_true')
     parser.add_argument('--tanda_size', type=int, default=2, help="Cuántos procesos iniciar a la vez.")
     parser.add_argument('--delay_tanda', type=int, default=15, help="Segundos de espera entre el inicio de cada tanda.")
+    parser.add_argument('--debug', action='store_true', help="Activar modo debug con logs detallados.")
     args = parser.parse_args()
 
     tasks = generar_tareas(args.desde, args.hasta) if args.modo == 'historico' else []
@@ -150,7 +151,7 @@ def main():
         print(f"Se lanzarán hasta {args.procesos} workers. El inicio se hará en tandas de {args.tanda_size} cada {args.delay_tanda}s.")
 
         with multiprocessing.Pool(processes=args.procesos) as pool:
-            tasks_para_pool = [(task, lock, args.headless, stop_event) for task in tareas_pendientes]
+            tasks_para_pool = [(task, lock, args.headless, stop_event, args.debug, args.procesos) for task in tareas_pendientes]
             results_async = []
             
             print(f"Encolando {len(tasks_para_pool)} workers...")

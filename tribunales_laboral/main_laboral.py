@@ -285,6 +285,7 @@ def main():
     parser.add_argument('--headless', action='store_true')
     parser.add_argument('--tanda_size', type=int, default=2, help="Cuántos procesos iniciar a la vez.")
     parser.add_argument('--delay_tanda', type=int, default=90, help="Segundos de espera entre el inicio de cada tanda.")
+    parser.add_argument('--debug', action='store_true', help='Activar logs detallados para depuración')
     args = parser.parse_args()
 
     tasks = generar_tareas(args.desde, args.hasta, "tribunales_laboral") if args.modo == 'historico' else []
@@ -320,7 +321,7 @@ def main():
         pool = multiprocessing.Pool(processes=args.procesos)
 
         try:
-            tasks_para_pool = [(task, lock, args.headless, stop_event) for task in tareas_pendientes]
+            tasks_para_pool = [(task, lock, args.headless, stop_event, args.debug) for task in tareas_pendientes]
             results_async = []
             
             print(f"Encolando {len(tasks_para_pool)} workers...")
@@ -341,6 +342,7 @@ def main():
             print("\nTodos los workers han sido encolados. Esperando a que terminen...")
             
             ip_bloqueada_detectada = False
+            retry_detectado = False
             for res in results_async:
                 try:
                     # Usamos un timeout pequeño para no quedar esperando por un worker que ya debería haber parado
@@ -349,6 +351,12 @@ def main():
                     if isinstance(resultado, str) and (resultado.startswith('IP_BLOCKED') or resultado.startswith('ERROR')):
                         print(f"¡SEÑAL DE ERROR DETECTADA ({resultado})! Activando evento de parada...")
                         ip_bloqueada_detectada = True
+                        stop_event.set()
+                        pool.terminate()
+                        break
+                    elif isinstance(resultado, str) and resultado.startswith('RETRY'):
+                        print(f"¡SEÑAL DE RETRY DETECTADA ({resultado})! Activando evento de parada...")
+                        retry_detectado = True
                         stop_event.set()
                         pool.terminate()
                         break 
@@ -366,7 +374,7 @@ def main():
             pool.join()
             pool.close()
 
-            if ip_bloqueada_detectada:
+            if ip_bloqueada_detectada or retry_detectado:
                 print("\nLimpieza final: Iniciando proceso de cierre forzado de navegadores...")
                 # --- INICIO DEL BLOQUE DE CIERRE ROBUSTO ---
                 intentos = 0
@@ -382,9 +390,12 @@ def main():
                     print("[CIERRE FORZADO] Éxito. Todos los procesos de navegador han sido cerrados.")
                 # --- FIN DEL BLOQUE DE CIERRE ROBUSTO ---
                 
-                print("\nProceso de rotación de IP iniciado.")
-                rotar_y_verificar_ip(args.headless)
-                print("\nIP rotada. Reiniciando el ciclo de procesamiento...")
+                if ip_bloqueada_detectada:
+                    print("\nProceso de rotación de IP iniciado.")
+                    rotar_y_verificar_ip(args.headless)
+                    print("\nIP rotada. Reiniciando el ciclo de procesamiento...")
+                elif retry_detectado:
+                    print("\nElementClickInterceptedException detectada. Reiniciando el ciclo de procesamiento sin rotación de IP...")
                 continue
             else:
                 print("\nTodas las tareas se completaron sin detectar bloqueos.")
