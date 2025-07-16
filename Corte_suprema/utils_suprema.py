@@ -35,7 +35,7 @@ def quedan_procesos_navegador():
         
     return "chrome.exe" in chrome or "chromedriver.exe" in chromedriver
 
-def is_ip_blocked_con_reintentos(driver, dia_id, retries=1, delay=5):
+def is_ip_blocked_con_reintentos(driver, dia_id, retries=3, delay=5):
     """
     Verifica si la IP está bloqueada, reintentando varias veces.
     Intenta recargar la página para confirmar el estado.
