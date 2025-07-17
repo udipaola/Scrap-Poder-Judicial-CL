@@ -1,23 +1,31 @@
 import pandas as pd
 import glob
 import os
+import sys
+import datetime
 import re
 import sqlalchemy
 import sys
 import datetime
 import shutil
-
+import logging
 # ============================================================================
 # CONFIGURACIÓN INICIAL Y LOGGING
 # ============================================================================
 
-# Configurar archivo de log para capturar toda la ejecución
-log_filename = f"proceso_completo_log_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-log_file = open(log_filename, "w", encoding="utf-8")
-sys.stdout = log_file
-sys.stderr = log_file
 
-print(f"Iniciando proceso completo de consolidación y envío a BD - {datetime.datetime.now()}")
+# Configurar el logger
+log_filename = f"proceso_completo_log_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_filename, encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+logging.info(f"Iniciando proceso completo de consolidación y envío a BD - {datetime.datetime.now()}")
 
 # ============================================================================
 # CONFIGURACIÓN DE CONEXIÓN A POSTGRES
@@ -80,7 +88,7 @@ def limpiar_nombre(texto):
 # ============================================================================
 
 print("\n=== PASO 1: CARGA DE ARCHIVOS CSV ===")
-base_path = r'D:\RepositoriosDataWorldsys\Scrap-Poder-Judicial-CL\Resultados_Globales'
+base_path = r'C:\Worldsys\Scrap-Poder-Judicial-CL\Resultados_Globales'
 pattern = os.path.join(base_path, '**', '*.csv')
 archivos = glob.glob(pattern, recursive=True)
 print(f'Archivos encontrados: {len(archivos)}')
@@ -126,11 +134,9 @@ print(f'Columnas disponibles: {df.columns.tolist()}')
 print("\n=== PASO 3: APLICACIÓN DE FILTROS ===")
 print(f'Registros iniciales: {len(df)}')
 
-'''
-# Filtrar por cargos válidos
-df_filtrado = df[df['cargo'].str.startswith(tuple(cargo_list), na=False)]
-print(f'Tras filtro de cargo: {len(df_filtrado)}')
-'''
+# Initialize df_filtrado with the full DataFrame before applying filters
+df_filtrado = df.copy()
+
 # Eliminar filas con nombres no deseados
 df_filtrado = df_filtrado[~df_filtrado['denominacion'].str.startswith(tuple(nombre_list), na=False)]
 print(f'Tras filtro de nombres: {len(df_filtrado)}')
@@ -214,7 +220,7 @@ try:
     # ============================================================================
     
     print("\n=== PASO 8: MOVIENDO ARCHIVOS PROCESADOS ===")
-    carpeta_destino = r'D:\RepositoriosDataWorldsys\Scrap-Poder-Judicial-CL\Resultados_enviados_bd'
+    carpeta_destino = r'C:\Worldsys\Scrap-Poder-Judicial-CL\Resultados_enviados_bd'
     
     # Crear carpeta destino si no existe
     if not os.path.exists(carpeta_destino):
@@ -258,10 +264,7 @@ print(f"- Registros finales: {len(df_final)}")
 print(f"- Archivo CSV generado: {output_path}")
 print(f"- Archivos movidos a carpeta de enviados: {archivos_movidos if 'archivos_movidos' in locals() else 0}")
 
-# Cerrar archivo de log y restaurar stdout/stderr
-log_file.close()
-sys.stdout = sys.__stdout__
-sys.stderr = sys.__stderr__
+
 
 print(f"\n✓ Proceso completo finalizado. Log guardado en: {log_filename}")
 print(f"✓ Archivo CSV generado: {output_path}")
