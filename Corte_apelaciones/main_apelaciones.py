@@ -106,8 +106,7 @@ def rotar_y_verificar_ip(headless_mode):
     print("="*50)
     
     while True:
-        print("[IP ROTATION] Desconectando de NordVPN...")
-        os.system(f'cd "{NORDVPN_PATH}" && nordvpn -d')
+
         time.sleep(5)
         
         #Se asegura de cerrar todos los navegadores antes de rotar la IP
