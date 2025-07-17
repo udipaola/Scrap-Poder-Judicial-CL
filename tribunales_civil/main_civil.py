@@ -20,7 +20,7 @@ import logging
 
 DIRECTORIO_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 NOMBRE_MODULO = os.path.basename(DIRECTORIO_ACTUAL)
-RUTA_SALIDA = os.path.join(DIRECTORIO_ACTUAL, '..', 'Resultados_Globales')
+RUTA_SALIDA = os.path.join(DIRECTORIO_ACTUAL, '..', 'Resultados_Globales','Resultados_civil')
 os.makedirs(RUTA_SALIDA, exist_ok=True)
 CHECKPOINT_FILE = os.path.join(RUTA_SALIDA, f"checkpoint_{NOMBRE_MODULO}.json")
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
@@ -348,6 +348,7 @@ def main():
     parser.add_argument('--headless', action='store_true')
     parser.add_argument('--tanda_size', type=int, default=2, help="Cuántos procesos iniciar a la vez.")
     parser.add_argument('--delay_tanda', type=int, default=90, help="Segundos de espera entre el inicio de cada tanda.")
+
     args = parser.parse_args()
 
     tasks = generar_tareas(args.desde, args.hasta, "tribunales_civil") if args.modo == 'historico' else []
