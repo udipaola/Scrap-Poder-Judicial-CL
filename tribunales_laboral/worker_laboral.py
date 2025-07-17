@@ -65,8 +65,8 @@ def scrape_worker(task_info):
         
         # Extraer información de la nueva estructura de tareas
         ruta_salida = task['ruta_salida']
-        fecha_desde_str = task['fecha_desde']
-        fecha_hasta_str = task['fecha_hasta']
+        fecha_desde_str = task['fecha_desde_str']
+        fecha_hasta_str = task['fecha_hasta_str']
         competencia_nombre = task['competencia_nombre']
         competencia_value = task['competencia_value']
         selector_id = task['selector_id']
