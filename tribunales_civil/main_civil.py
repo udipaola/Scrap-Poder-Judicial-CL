@@ -348,6 +348,7 @@ def main():
     parser.add_argument('--headless', action='store_true')
     parser.add_argument('--tanda_size', type=int, default=2, help="Cuántos procesos iniciar a la vez.")
     parser.add_argument('--delay_tanda', type=int, default=90, help="Segundos de espera entre el inicio de cada tanda.")
+
     args = parser.parse_args()
 
     tasks = generar_tareas(args.desde, args.hasta, "tribunales_civil") if args.modo == 'historico' else []
