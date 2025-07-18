@@ -28,8 +28,8 @@ def scrape_worker(task_info):
     # 1. Extraer la ruta de salida y las fechas
     ruta_salida = task['ruta_salida']
     task_id = task['id']
-    fecha_desde_str = task['fecha_desde']
-    fecha_hasta_str = task['fecha_hasta']
+    fecha_desde_str = task['fecha_desde_str']
+    fecha_hasta_str = task['fecha_hasta_str']
     
     # --- Verificación inicial del evento de parada ---
     if stop_event.is_set():
@@ -296,10 +296,11 @@ def scrape_worker(task_info):
             return f"STOPPED:{task_id}"
 
     except Exception as e:
-        print(f"[{task_id}] ERROR INESPERADO en el worker: {e}")
-        # Considerar si se debe señalar el evento de parada en caso de errores críticos
-        # stop_event.set()
-        return f"UNEXPECTED_ERROR:{task_id}"
+        error_message = str(e).split('\n')[0]
+        print(f"[{task_id}] ERROR INESPERADO en el worker: {error_message}")
+        print(f"Error grave en worker {task_id}: {type(e).__name__} - {error_message}")
+        stop_event.set()
+        return f"ERROR:{task_id}"
     finally:
         if driver:
             driver.quit()
