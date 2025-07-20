@@ -291,7 +291,7 @@
         "status": "completed"
     },
     "laboral_2021-01-01_to_2021-01-07_224": {
-        "status": "in_progress",
+        "status": "completed",
         "last_page": 1
     },
     "laboral_2021-01-01_to_2021-01-07_223": {
@@ -2089,8 +2089,8 @@
         "last_page": 1
     },
     "laboral_2021-01-22_to_2021-01-28_1348": {
-        "status": "completed",
-        "last_page": 4
+        "status": "in_progress",
+        "last_page": 1
     },
     "laboral_2021-01-22_to_2021-01-28_1357": {
         "status": "completed",
@@ -2105,8 +2105,8 @@
         "last_page": 1
     },
     "laboral_2021-01-22_to_2021-01-28_1349": {
-        "status": "completed",
-        "last_page": 4
+        "status": "in_progress",
+        "last_page": 1
     },
     "laboral_2021-01-22_to_2021-01-28_1359": {
         "status": "completed",
