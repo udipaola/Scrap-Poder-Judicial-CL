@@ -17,7 +17,7 @@ from verificacion_worker_apelaciones import verificacion_worker
 from utils_apelaciones import forzar_cierre_navegadores, quedan_procesos_navegador
 
 # Configuración centralizada
-RUTA_SALIDA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'Resultados_Globales')
+RUTA_SALIDA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'Resultados_Globales','Resultados_apelaciones')
 CHECKPOINT_FILE = os.path.join(RUTA_SALIDA, 'checkpoint_apelaciones.json')
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
 PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"]
@@ -106,8 +106,7 @@ def rotar_y_verificar_ip(headless_mode):
     print("="*50)
     
     while True:
-        print("[IP ROTATION] Desconectando de NordVPN...")
-        os.system(f'cd "{NORDVPN_PATH}" && nordvpn -d')
+
         time.sleep(5)
         
         #Se asegura de cerrar todos los navegadores antes de rotar la IP

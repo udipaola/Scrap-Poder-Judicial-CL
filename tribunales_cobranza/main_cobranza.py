@@ -18,7 +18,7 @@ from verificacion_worker_cobranza import verificacion_worker
 from utils_cobranza import forzar_cierre_navegadores, quedan_procesos_navegador
 
 # Configuración centralizada
-RUTA_SALIDA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'Resultados_Globales')
+RUTA_SALIDA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),'Resultados_Globales', 'Resultados_cobranza')
 CHECKPOINT_FILE = os.path.join(RUTA_SALIDA, 'checkpoint_tribunales_cobranza.json')
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
 PAISES_NORDVPN = ["Chile", "Argentina", "Bolivia", "Paraguay", "Uruguay", "Peru"]
