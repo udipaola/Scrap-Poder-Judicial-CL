@@ -20,7 +20,7 @@ import logging
 
 DIRECTORIO_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 NOMBRE_MODULO = os.path.basename(DIRECTORIO_ACTUAL)
-RUTA_SALIDA = os.path.join(DIRECTORIO_ACTUAL, '..', 'Resultados_Globales')
+RUTA_SALIDA = os.path.join(DIRECTORIO_ACTUAL, '..', 'Resultados_Globales','Resultados_civil')
 os.makedirs(RUTA_SALIDA, exist_ok=True)
 CHECKPOINT_FILE = os.path.join(RUTA_SALIDA, f"checkpoint_{NOMBRE_MODULO}.json")
 NORDVPN_PATH = r"C:\Program Files\NordVPN"
