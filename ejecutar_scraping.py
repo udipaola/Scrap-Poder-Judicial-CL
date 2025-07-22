@@ -160,7 +160,7 @@ class ScrapingExecutor:
                     procesos = 2
                     break
                 procesos = int(procesos_input)
-                if 1 <= procesos <= 10:
+                if 1 <= procesos <= 20:
                     break
                 print("❌ El número de procesos debe estar entre 1 y 10")
             except ValueError:
