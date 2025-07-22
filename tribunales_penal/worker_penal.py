@@ -378,9 +378,9 @@ def scrape_worker(task_info):
                 csv_filename = os.path.join(ruta_salida, f"resultados_{task_id}.csv")
                 
                 if os.path.exists(csv_filename):
-                    df.to_csv(csv_filename, mode='a', header=False, index=False, encoding='utf-8-sig')
+                    df.to_csv(csv_filename, mode='a', header=False, index=False, encoding='utf-8-sig', sep=';')
                 else:
-                    df.to_csv(csv_filename, index=False, encoding='utf-8-sig')
+                    df.to_csv(csv_filename, index=False, encoding='utf-8-sig', sep=';')
                 
                 log_progress(task_id, f"Página {pagina_actual}: {len(registros_pagina)} registros guardados")
             else:
