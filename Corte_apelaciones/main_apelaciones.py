@@ -111,7 +111,8 @@ def rotar_y_verificar_ip(headless_mode):
         
         #Se asegura de cerrar todos los navegadores antes de rotar la IP
         print("[CIERRE FORZADO] Cerrando todos los navegadores...")
-        forzar_cierre_navegadores() 
+        forzar_cierre_navegadores()
+        time.sleep(5)
         
         pais_elegido = random.choice(PAISES_NORDVPN)
         print(f"[IP ROTATION] Conectando a: {pais_elegido}")

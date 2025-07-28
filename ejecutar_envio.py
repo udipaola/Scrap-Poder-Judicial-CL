@@ -41,14 +41,11 @@ engine_postgres = sqlalchemy.create_engine(f'postgresql://{PG_LDI_Username}:{PG_
 # LISTAS DE FILTROS Y LIMPIEZA
 # ============================================================================
 
-'''
 # Lista de cargos a considerar
 cargo_list = [
     'DENUNCIADO','DDO','RECURRIDO','QUERELLADO','IMPUTAD','QDO','DNDO','APOD',
     'DDOSOL','RECDO','DDO SOL','DDOSO','DDOSOLID','DDOSU','DDO SUB'
 ]
-
-'''
 
 # Lista de nombres a eliminar
 nombre_list = [
@@ -82,6 +79,47 @@ def limpiar_nombre(texto):
     palabras = texto.split()
     palabras_filtradas = [p for p in palabras if p.upper() not in nombre_list1]
     return ' '.join(palabras_filtradas)
+
+# Lista de estados de causa a conservar
+estados_validos = [
+    'Fallada',
+    'Fallada-Impugnada',
+    'Fallada o Concluida',
+    'Fallada-Terminada',
+    'Concluido',
+    'Concluida.',
+    'En Tramitación',
+    'Tramitación',
+    'Tramitación.',
+    'Trámite en Sala',
+    'En Acuerdo',
+    'Medida Mejor Resolver',
+    'Elev. Excma. Corte Suprema',
+    'Deja Sin Efecto',
+    'Cumplimiento',
+    'Terminada Masiva'
+]
+
+def extraer_estado_causa(row):
+    """Extrae el estado de la causa desde la columna de observaciones."""
+    observaciones = row.get('observaciones', '')
+    institucion = row.get('institucion', '')
+    
+    if not isinstance(observaciones, str):
+        return None
+
+    try:
+        if institucion == 'Corte Suprema':
+            if 'Estado: ' in observaciones:
+                return observaciones.split('Estado: ')[1].strip()
+        else:
+            if 'Estado Causa: ' in observaciones:
+                parte = observaciones.split('Estado Causa: ')[1]
+                return parte.split('|')[0].strip()
+    except IndexError:
+        return None
+    
+    return None
 
 # ============================================================================
 # PASO 1: BUSCAR Y CARGAR ARCHIVOS CSV
@@ -137,6 +175,23 @@ print(f'Registros iniciales: {len(df)}')
 # Initialize df_filtrado with the full DataFrame before applying filters
 df_filtrado = df.copy()
 
+# Filtrar por cargo_list
+if 'cargo' in df_filtrado.columns:
+    # Guardar los cargos que se van a excluir
+    cargos_excluidos_df = df_filtrado[~df_filtrado['cargo'].str.upper().isin(cargo_list)]
+    cargos_unicos_excluidos = cargos_excluidos_df['cargo'].unique()
+    
+    with open('cargos_excluidos.txt', 'w', encoding='utf-8') as f:
+        for cargo in cargos_unicos_excluidos:
+            f.write(f"{cargo}\n")
+    logging.info(f"Se han guardado {len(cargos_unicos_excluidos)} cargos únicos excluidos en 'cargos_excluidos.txt'.")
+
+    # Aplicar el filtro
+    df_filtrado = df_filtrado[df_filtrado['cargo'].str.upper().isin(cargo_list)]
+    print(f'Tras filtro de cargo: {len(df_filtrado)}')
+else:
+    logging.warning("La columna 'cargo' no se encuentra en el DataFrame, no se aplicará el filtro por cargo.")
+
 # Eliminar filas con nombres no deseados
 df_filtrado = df_filtrado[~df_filtrado['denominacion'].str.startswith(tuple(nombre_list), na=False)]
 print(f'Tras filtro de nombres: {len(df_filtrado)}')
@@ -163,6 +218,16 @@ print(f'Tras eliminar RUT 0-0: {len(df_filtrado)}')
 # Eliminar duplicados
 df_filtrado = df_filtrado.drop_duplicates()
 print(f'Tras eliminar duplicados: {len(df_filtrado)}')
+
+
+print("\n--- Filtrado por Estado de Causa ---")
+# Aplicar la función para crear la nueva columna 'estado_causa'
+df_filtrado['estado_causa'] = df_filtrado.apply(extraer_estado_causa, axis=1)
+
+# Filtrar para mantener solo los estados válidos
+df_filtrado = df_filtrado[df_filtrado['estado_causa'].isin(estados_validos)]
+print(f'Tras filtro por estado de causa: {len(df_filtrado)}')
+
 
 # ============================================================================
 # PASO 4: EXTRAER FECHA DE INGRESO
