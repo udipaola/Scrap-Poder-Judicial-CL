@@ -215,9 +215,49 @@ else:
     print("Advertencia: Columna 'documento' no encontrada. Se omite el filtro de RUT.")
 print(f'Tras eliminar RUT 0-0: {len(df_filtrado)}')
 
-# Eliminar duplicados
-df_filtrado = df_filtrado.drop_duplicates()
-print(f'Tras eliminar duplicados: {len(df_filtrado)}')
+# --- Lógica para eliminar duplicados por fecha de causa ---
+print("\n--- Eliminando duplicados por fecha de causa ---")
+
+# Función para extraer la fecha de la causa de las observaciones
+def extraer_fecha_causa(obs):
+    if not isinstance(obs, str):
+        return None
+    # Buscar patrones 'Fecha Ingreso: DD/MM/YYYY', 'Fecha: DD/MM/YYYY' o 'Ingreso: DD/MM/YYYY'
+    match = re.search(r'(?:Fecha Ingreso:|Fecha:|Ingreso:)\s*(\d{2}/\d{2}/\d{4})', obs)
+    if match:
+        return pd.to_datetime(match.group(1), format='%d/%m/%Y', errors='coerce')
+    return None
+
+df_filtrado['fecha_causa'] = df_filtrado['observaciones'].apply(extraer_fecha_causa)
+
+# Extraer ROL, RIT, RUC de las observaciones
+def extraer_identificador(obs):
+    if not isinstance(obs, str):
+        return None, None, None
+    rol = re.search(r'Rol: (\S+)', obs)
+    rit = re.search(r'RIT: (\S+)', obs)
+    ruc = re.search(r'RUC: (\S+)', obs)
+    return rol.group(1) if rol else None, rit.group(1) if rit else None, ruc.group(1) if ruc else None
+
+df_filtrado[['rol', 'rit', 'ruc']] = df_filtrado['observaciones'].apply(lambda x: pd.Series(extraer_identificador(x)))
+
+# Definir la clave para identificar duplicados
+columnas_clave = ['rol', 'rit', 'ruc', 'denominacion']
+if 'documento' in df_filtrado.columns:
+    columnas_clave.append('documento')
+
+# Rellenar NaT en fecha_causa con una fecha muy antigua para que no sean descartados si son únicos
+fecha_minima = pd.Timestamp('1900-01-01')
+df_filtrado['fecha_causa'] = df_filtrado['fecha_causa'].fillna(fecha_minima)
+
+# Ordenar por fecha de causa (más reciente primero) y luego eliminar duplicados
+df_filtrado = df_filtrado.sort_values(by='fecha_causa', ascending=False)
+df_filtrado = df_filtrado.drop_duplicates(subset=columnas_clave, keep='first')
+
+# Opcional: volver a poner NaT donde estaba la fecha mínima para no guardar fechas incorrectas
+df_filtrado.loc[df_filtrado['fecha_causa'] == fecha_minima, 'fecha_causa'] = pd.NaT
+
+print(f'Tras eliminar duplicados por fecha de causa: {len(df_filtrado)}')
 
 
 print("\n--- Filtrado por Estado de Causa ---")
@@ -236,7 +276,7 @@ print(f'Tras filtro por estado de causa: {len(df_filtrado)}')
 print("\n=== PASO 4: EXTRACCIÓN DE FECHAS ===")
 
 # Extraer fecha de ingreso desde observaciones usando regex
-patron_fecha = r'Ingreso: (\d{2}/\d{2}/\d{4})'
+patron_fecha = r'(?:Fecha Ingreso:|Fecha:|Ingreso:)\s*(\d{2}/\d{2}/\d{4})'
 df_filtrado['fecha_ingreso'] = df_filtrado['observaciones'].str.extract(patron_fecha, expand=False)
 
 # Mostrar distribución de fechas
