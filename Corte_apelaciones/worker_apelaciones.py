@@ -12,6 +12,7 @@ from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 from utils_apelaciones import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
+from shared_utils import update_checkpoint
 
 # El checkpoint file se obtendrá de la tarea
 
@@ -230,33 +231,15 @@ def scrape_worker(task_info):
                     error_message = str(e_row).split('\n')[0]
                     print(f"[{task_id}] Error procesando fila, saltando. Causa: {type(e_row).__name__} - {error_message}")
                     continue
-            else: 
+            else:
                 if registros_pagina:
                     df = pd.DataFrame(registros_pagina)
                     csv_path = os.path.join(ruta_salida, f"resultados_{task_id}.csv")
                     header = not os.path.exists(csv_path)
                     df.to_csv(csv_path, mode='a', sep=';', index=False, encoding='utf-8-sig', header=header)
                 
-                with lock:
-                    try:
-                        # Abrir en modo lectura y escritura, crear si no existe
-                        with open(checkpoint_file, 'r+') as f:
-                            checkpoint_data = json.load(f)
-                    except (FileNotFoundError, json.JSONDecodeError):
-                        checkpoint_data = {}
-
-                    # Actualizar la información de la tarea actual
-                    checkpoint_data[task_id] = {
-                        "status": "in_progress",
-                        "last_page": pagina_actual
-                    }
-
-                    # Escribir de vuelta al archivo
-                    with open(checkpoint_file, 'w') as f:
-                        json.dump(checkpoint_data, f, indent=4)
-                    
-                    print(f"[{task_id}] Checkpoint guardado en página {pagina_actual}.")
-
+                update_checkpoint(checkpoint_file, task_id, {"status": "in_progress", "last_page": pagina_actual})
+                print(f"[{task_id}] Checkpoint guardado en página {pagina_actual}.")
                 try:
                     # 1. Obtener número de página activa ANTES del clic
                     pagina_activa_antes = driver.find_element(By.CSS_SELECTOR, "li.page-item.active > span.page-link").text.strip()
@@ -293,21 +276,7 @@ def scrape_worker(task_info):
 
         # --- Finalización ---
         if not stop_event.is_set():
-            with lock:
-                try:
-                    with open(checkpoint_file, 'r+') as f:
-                        checkpoint_data = json.load(f)
-                except (FileNotFoundError, json.JSONDecodeError):
-                    checkpoint_data = {}
-                
-                # Actualizar el estado de la tarea a 'completed'
-                if task_id in checkpoint_data:
-                    checkpoint_data[task_id]['status'] = 'completed'
-                else:
-                    checkpoint_data[task_id] = {'status': 'completed'}
-                
-                with open(checkpoint_file, 'w') as f:
-                    json.dump(checkpoint_data, f, indent=4)
+            update_checkpoint(checkpoint_file, task_id, {"status": "completed"})
 
             print(f"[{task_id}] Tarea completada y marcada en checkpoint.")
             return f"COMPLETED:{task_id}"
