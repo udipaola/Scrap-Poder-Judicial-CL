@@ -10,5 +10,21 @@
     "civil_2021-09-24_to_2021-09-30_84": {
         "status": "in_progress",
         "last_page": 1
+    },
+    "civil_2021-01-01_to_2021-01-07_1400": {
+        "status": "completed"
+    },
+    "civil_2021-01-01_to_2021-01-07_1401": {
+        "status": "completed"
+    },
+    "civil_2021-01-01_to_2021-01-07_2": {
+        "status": "completed"
+    },
+    "civil_2021-01-01_to_2021-01-07_5": {
+        "status": "completed"
+    },
+    "civil_2021-01-01_to_2021-01-07_3": {
+        "status": "in_progress",
+        "last_page": 1
     }
 }
