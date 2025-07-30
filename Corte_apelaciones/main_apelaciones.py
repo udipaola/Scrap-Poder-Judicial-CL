@@ -174,10 +174,7 @@ def main():
 
         print(f"Se lanzarán hasta {args.procesos} workers. El inicio se hará en tandas de {args.tanda_size} cada {args.delay_tanda}s.")
 
-        # 1. Creamos el pool manualmente, fuera de un bloque 'with'
-        pool = multiprocessing.Pool(processes=args.procesos)
-
-        try:
+        with multiprocessing.Pool(processes=args.procesos) as pool:
             tasks_para_pool = [(task, lock, args.headless, stop_event) for task in tareas_pendientes]
             results_async = []
             
@@ -220,9 +217,8 @@ def main():
                     pool.terminate()
                     break
 
-        finally:
-            pool.join()
             pool.close()
+            pool.join()
 
             if ip_bloqueada_detectada:
                 print("\nLimpieza final: Iniciando proceso de cierre forzado de navegadores...")

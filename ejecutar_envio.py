@@ -41,10 +41,45 @@ engine_postgres = sqlalchemy.create_engine(f'postgresql://{PG_LDI_Username}:{PG_
 # LISTAS DE FILTROS Y LIMPIEZA
 # ============================================================================
 
-# Lista de cargos a considerar
+# Lista de cargos a considerar (versión literal y case-sensitive)
 cargo_list = [
-    'DENUNCIADO','DDO','RECURRIDO','QUERELLADO','IMPUTAD','QDO','DNDO','APOD',
-    'DDOSOL','RECDO','DDO SOL','DDOSO','DDOSOLID','DDOSU','DDO SUB'
+    'DDO.',
+    'AB.DDO.',
+    'AP.DDO.',
+    'DDO.SOL',
+    'IMPUTAD.',
+    'QDO.',
+    'DDO.SUBSIDIARIO',
+    'DNDO.',
+    'AB.DDOR.',
+    'DDOR.',
+    'AP. DDOR.',
+    'DDO. SOL.',
+    'Apod.Dndo.',
+    'AB.DDO.SOL.',
+    'ABG.DNDO.',
+    'AB.DDO',
+    'AP.DDO',
+    'DDO.SO',
+    'DDO.SU',
+    'REQDO.',
+    'DDO.SOL.',
+    'DDO.SOLID.',
+    'DDO. SUB.',
+    'AB.REQDO.',
+    'AB.DDO.SUB.',
+    'Defensor',
+    'DDO.SUB.',
+    'ABG.ACUSADO',
+    'Abogado del Acusado',
+    'ABG.DNDO',
+    'AP.DND',
+    'DNCDO.',
+    'Denunciado.',
+    'Querellado.',
+    'Defensor.', 
+    'Defensor privado.',
+    'Defensor penal público'
 ]
 
 # Lista de nombres a eliminar

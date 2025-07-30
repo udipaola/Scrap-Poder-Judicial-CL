@@ -152,13 +152,14 @@ def scrape_worker(task_info):
             
             filas_causas = driver.find_elements(By.XPATH, "//table[@id='dtaTableDetalleFecha']/tbody/tr")
             registros_pagina = []
-            
+            error_reintentar_pagina = False
+
             for i in range(len(filas_causas)):
                 if stop_event.is_set(): break
                 try:
                     tabla_fresca = wait.until(EC.presence_of_element_located((By.ID, "dtaTableDetalleFecha")))
                     fila = tabla_fresca.find_elements(By.XPATH, ".//tbody/tr")[i]
-                    
+
                     celdas = fila.find_elements(By.TAG_NAME, "td")
                     if not celdas or len(celdas) < 2: continue
 
@@ -169,12 +170,21 @@ def scrape_worker(task_info):
                             valor = celdas[index].text.strip()
                             if valor: # Solo añadir si la celda tiene contenido
                                 observaciones_parts.append(f"{header}: {valor}")
-                    
+
                     observaciones = " | ".join(observaciones_parts)
                     # --- Fin: Construcción dinámica de observaciones ---
 
-                    lupa = fila.find_element(By.CSS_SELECTOR, "a[href='#modalDetalleApelaciones']")
-                    lupa.click()
+                    try:
+                        lupa = fila.find_element(By.CSS_SELECTOR, "a[href='#modalDetalleApelaciones']")
+                        driver.execute_script("arguments[0].click();", lupa)
+                    except Exception as e_click:
+                        from selenium.common.exceptions import ElementClickInterceptedException
+                        if isinstance(e_click, ElementClickInterceptedException) or 'element click intercepted' in str(e_click):
+                            print(f"[{task_id}] ElementClickInterceptedException al hacer click en la lupa. Reintentando página completa...")
+                            error_reintentar_pagina = True
+                            break
+                        else:
+                            raise
 
                     modal_selector = "#modalDetalleApelaciones"
                     modal = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, modal_selector)))
@@ -198,6 +208,19 @@ def scrape_worker(task_info):
 
                     wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, f'{modal_selector} .close'))).click()
                     wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, modal_selector)))
+
+                except StaleElementReferenceException:
+                    print(f"[{task_id}] Stale element en la página {pagina_actual}. Se reintentará la página completa.")
+                    error_reintentar_pagina = True
+                    break
+                except Exception as e_row:
+                    from selenium.common.exceptions import ElementClickInterceptedException
+                    error_message = str(e_row).split('\n')[0]
+                    if isinstance(e_row, ElementClickInterceptedException) or 'element click intercepted' in error_message:
+                        print(f"[{task_id}] ElementClickInterceptedException detectado. Reintentando página completa...")
+                        error_reintentar_pagina = True
+                        break
+                    print(f"[{task_id}] Error procesando fila, saltando. Causa: {type(e_row).__name__} - {error_message}")
 
                 except StaleElementReferenceException:
                     print(f"[{task_id}] Stale element en la página {pagina_actual}. Se reintentará la página.")
