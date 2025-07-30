@@ -17,10 +17,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
-from selenium.webdriver.chrome.options import Options
-import threading
-import logging
 from utils_penal import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
+from shared_utils import update_checkpoint
+
+import tempfile
 
 # Configurar logging para reducir ruido
 logging.getLogger('selenium').setLevel(logging.WARNING)
@@ -50,8 +50,6 @@ def log_worker_status(task_id, total_workers, status, details=""):
 # Función worker_penal removida - la lógica está en scrape_worker
 
 # CHECKPOINT_FILE será extraído de la tarea
-
-import tempfile
 
 def scrape_worker(task_info):
     task, lock, headless_mode, debug_mode, stop_event = task_info
@@ -375,33 +373,16 @@ def scrape_worker(task_info):
             # Guardar registros en CSV
             if registros_pagina:
                 df = pd.DataFrame(registros_pagina)
-                csv_filename = os.path.join(ruta_salida, f"resultados_{task_id}.csv")
-                
-                if os.path.exists(csv_filename):
-                    df.to_csv(csv_filename, mode='a', header=False, index=False, encoding='utf-8-sig', sep=';')
-                else:
-                    df.to_csv(csv_filename, index=False, encoding='utf-8-sig', sep=';')
-                
-                log_progress(task_id, f"Página {pagina_actual}: {len(registros_pagina)} registros guardados")
-            else:
-                log_debug(task_id, f"Página {pagina_actual}: Sin registros")
+                csv_path = os.path.join(ruta_salida, f"resultados_{task_id}.csv")
+                header = not os.path.exists(csv_path)
+                df.to_csv(csv_path, mode='a', sep=';', index=False, encoding='utf-8-sig', header=header)
             
-            with lock:
-                try:
-                    with open(CHECKPOINT_FILE, 'r+') as f:
-                        checkpoint_data = json.load(f)
-                except (FileNotFoundError, json.JSONDecodeError):
-                    checkpoint_data = {}
-
-                checkpoint_data[task_id] = {
-                    "status": "in_progress",
-                    "last_page": pagina_actual
-                }
-
-                with open(CHECKPOINT_FILE, 'w') as f:
-                    json.dump(checkpoint_data, f, indent=4)
+            update_checkpoint(CHECKPOINT_FILE, task_id, {
+                "status": "in_progress",
+                "last_page": pagina_actual
+            })
                 
-                log_debug(task_id, f"Checkpoint guardado página {pagina_actual}")
+            print(f"[{task_id}] Checkpoint guardado en página {pagina_actual}.")
 
             # Paginación
             try:
@@ -428,22 +409,9 @@ def scrape_worker(task_info):
 
         # --- Finalización ---
         if not stop_event.is_set():
-            with lock:
-                try:
-                    with open(CHECKPOINT_FILE, 'r+') as f:
-                        checkpoint_data = json.load(f)
-                except (FileNotFoundError, json.JSONDecodeError):
-                    checkpoint_data = {}
-                
-                if task_id in checkpoint_data:
-                    checkpoint_data[task_id]['status'] = 'completed'
-                else:
-                    checkpoint_data[task_id] = {'status': 'completed'}
-                
-                with open(CHECKPOINT_FILE, 'w') as f:
-                    json.dump(checkpoint_data, f, indent=4)
+            update_checkpoint(CHECKPOINT_FILE, task_id, {'status': 'completed'})
 
-            log_worker_status(task_id, total_workers, "FINALIZADO", "tarea completada")
+            print(f"[{task_id}] Tarea completada y marcada en checkpoint.")
             return f"COMPLETED:{task_id}"
         else:
             log_worker_status(task_id, total_workers, "DETENIDO", "evento de parada")

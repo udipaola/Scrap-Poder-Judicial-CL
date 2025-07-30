@@ -18,6 +18,7 @@ from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 from utils_laboral import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
+from shared_utils import update_checkpoint
 
 import tempfile
 
@@ -246,22 +247,12 @@ def scrape_worker(task_info):
                 header = not os.path.exists(csv_path)
                 df.to_csv(csv_path, mode='a', sep=';', index=False, encoding='utf-8-sig', header=header)
             
-            with lock:
-                try:
-                    with open(CHECKPOINT_FILE, 'r+') as f:
-                        checkpoint_data = json.load(f)
-                except (FileNotFoundError, json.JSONDecodeError):
-                    checkpoint_data = {}
-
-                checkpoint_data[task_id] = {
-                    "status": "in_progress",
-                    "last_page": pagina_actual
-                }
-
-                with open(CHECKPOINT_FILE, 'w') as f:
-                    json.dump(checkpoint_data, f, indent=4)
+            update_checkpoint(CHECKPOINT_FILE, task_id, {
+                "status": "in_progress",
+                "last_page": pagina_actual
+            })
                 
-                print(f"[{task_id}] Checkpoint guardado en página {pagina_actual}.")
+            print(f"[{task_id}] Checkpoint guardado en página {pagina_actual}.")
 
             # Paginación
             try:
@@ -288,20 +279,7 @@ def scrape_worker(task_info):
 
         # --- Finalización ---
         if not stop_event.is_set():
-            with lock:
-                try:
-                    with open(CHECKPOINT_FILE, 'r+') as f:
-                        checkpoint_data = json.load(f)
-                except (FileNotFoundError, json.JSONDecodeError):
-                    checkpoint_data = {}
-                
-                if task_id in checkpoint_data:
-                    checkpoint_data[task_id]['status'] = 'completed'
-                else:
-                    checkpoint_data[task_id] = {'status': 'completed'}
-                
-                with open(CHECKPOINT_FILE, 'w') as f:
-                    json.dump(checkpoint_data, f, indent=4)
+            update_checkpoint(CHECKPOINT_FILE, task_id, {'status': 'completed'})
 
             print(f"[{task_id}] Tarea completada y marcada en checkpoint.")
             return f"COMPLETED:{task_id}"

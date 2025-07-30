@@ -12,6 +12,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 from utils_suprema import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
+from shared_utils import update_checkpoint
 
 # El checkpoint file se obtendrá de la tarea
 
@@ -220,14 +221,7 @@ def scrape_worker(task):
             
             with lock:
                 # (Tu lógica de checkpoint aquí... es correcta)
-                try:
-                    with open(checkpoint_file, 'r+') as f:
-                        checkpoint_data = json.load(f)
-                except (FileNotFoundError, json.JSONDecodeError):
-                    checkpoint_data = {}
-                checkpoint_data[dia_id] = {"status": "in_progress", "last_page": pagina_actual}
-                with open(checkpoint_file, 'w') as f:
-                    json.dump(checkpoint_data, f, indent=4)
+                update_checkpoint(checkpoint_file, dia_id, {"status": "in_progress", "last_page": pagina_actual})
                 print(f"[{dia_id}] Checkpoint guardado en página {pagina_actual}.")
 
             try:
@@ -258,17 +252,7 @@ def scrape_worker(task):
         if not stop_event.is_set():
             with lock:
                 # (Tu lógica de marcar como completado aquí... es correcta)
-                try:
-                    with open(checkpoint_file, 'r+') as f:
-                        checkpoint_data = json.load(f)
-                except (FileNotFoundError, json.JSONDecodeError):
-                    checkpoint_data = {}
-                if dia_id in checkpoint_data:
-                    checkpoint_data[dia_id]['status'] = 'completed'
-                else:
-                    checkpoint_data[dia_id] = {'status': 'completed'}
-                with open(checkpoint_file, 'w') as f:
-                    json.dump(checkpoint_data, f, indent=4)
+                update_checkpoint(checkpoint_file, dia_id, {'status': 'completed'})
             print(f"[{dia_id}] Tarea completada.")
             return f"COMPLETED:{dia_id}"
         else:
