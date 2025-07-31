@@ -9,13 +9,14 @@ from selenium.webdriver.support import expected_conditions as EC
 
 def forzar_cierre_navegadores():
     """
-    Intenta forzar el cierre de todos los procesos de Chrome y ChromeDriver usando taskkill para mayor robustez.
+    Intenta forzar el cierre de todos los procesos de Chrome y ChromeDriver usando la ruta absoluta de taskkill para mayor robustez.
     Esto es útil cuando los drivers o ventanas quedan colgados.
     """
+    taskkill_path = r"C:\Windows\System32\taskkill.exe"
     print("[CIERRE FORZADO GLOBAL] Intentando terminar todos los procesos de ChromeDriver y Chrome...")
-    os.system('taskkill /F /IM chromedriver.exe /T > nul 2>&1')
-    os.system('taskkill /F /IM chrome.exe /T > nul 2>&1')
-    time.sleep(2) # Pausa para que el SO libere recursos
+    os.system(f'{taskkill_path} /F /IM chromedriver.exe /T > nul 2>&1')
+    os.system(f'{taskkill_path} /F /IM chrome.exe /T > nul 2>&1')
+    time.sleep(2)  # Pausa para que el SO libere recursos
     print("[CIERRE FORZADO GLOBAL] Comandos de terminación ejecutados.")
 
 def quedan_procesos_navegador():
