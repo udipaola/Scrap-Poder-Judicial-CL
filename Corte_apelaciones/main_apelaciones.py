@@ -4,6 +4,7 @@ import argparse
 import multiprocessing
 import json
 import os
+import subprocess
 import time
 import random
 import shutil
@@ -116,7 +117,18 @@ def rotar_y_verificar_ip(headless_mode):
         
         pais_elegido = random.choice(PAISES_NORDVPN)
         print(f"[IP ROTATION] Conectando a: {pais_elegido}")
-        os.system(f'cd "{NORDVPN_PATH}" && nordvpn -c -g "{pais_elegido}"')
+        try:
+            # Usamos subprocess.run con timeout para evitar bloqueos
+            comando = ['nordvpn', '-c', '-g', pais_elegido]
+            print(f"[IP ROTATION] Ejecutando comando: {' '.join(comando)}")
+            subprocess.run(comando, check=True, timeout=120, cwd=NORDVPN_PATH, shell=True, capture_output=True, text=True)
+            print(f"[IP ROTATION] Comando de conexión a {pais_elegido} completado.")
+        except subprocess.TimeoutExpired:
+            print(f"[IP ROTATION ERROR] El comando para conectar a {pais_elegido} excedió el tiempo de espera de 120s.")
+            continue # Reintentar con otro país
+        except subprocess.CalledProcessError as e:
+            print(f"[IP ROTATION ERROR] Fallo al conectar a {pais_elegido}. Error: {e.stderr}")
+            continue # Reintentar con otro país
         
         print("[IP ROTATION] Esperando 40s para estabilizar conexión...")
         time.sleep(40)
