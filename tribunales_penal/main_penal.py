@@ -288,11 +288,10 @@ def rotar_y_verificar_ip(headless_mode):
         pais_elegido = random.choice(PAISES_NORDVPN)
         print(f"[IP ROTATION] Conectando a: {pais_elegido}")
         try:
-            # Usamos subprocess.run con timeout para evitar bloqueos
-            # y especificamos la ruta completa al ejecutable.
-            comando = [os.path.join(NORDVPN_PATH, 'nordvpn'), '-c', '-g', pais_elegido]
-            print(f"[IP ROTATION] Ejecutando comando: {' '.join(comando)}")
-            subprocess.run(comando, check=True, timeout=120, shell=True, capture_output=True, text=True)
+            # Usamos subprocess.run con timeout y cwd para evitar problemas de ruta.
+            comando = ['nordvpn', '-c', '-g', pais_elegido]
+            print(f"[IP ROTATION] Ejecutando comando: {' '.join(comando)} en el directorio {NORDVPN_PATH}")
+            subprocess.run(comando, check=True, timeout=120, shell=True, capture_output=True, text=True, cwd=NORDVPN_PATH)
             print(f"[IP ROTATION] Comando de conexión a {pais_elegido} completado.")
         except subprocess.TimeoutExpired:
             print(f"[IP ROTATION ERROR] El comando para conectar a {pais_elegido} excedió el tiempo de espera de 120s.")
