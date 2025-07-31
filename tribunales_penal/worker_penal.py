@@ -21,6 +21,7 @@ from utils_penal import forzar_cierre_navegadores, is_ip_blocked_con_reintentos
 from shared_utils import update_checkpoint
 
 import tempfile
+import logging
 
 # Configurar logging para reducir ruido
 logging.getLogger('selenium').setLevel(logging.WARNING)
