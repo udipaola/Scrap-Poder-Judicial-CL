@@ -34,7 +34,9 @@ def limpiar_perfiles_antiguos():
     # Patrones para encontrar todos los perfiles relevantes
     patrones = [
         os.path.join(temp_dir, "pjud_profile_*"),
-        os.path.join(temp_dir, "pjud_verification_profile_*")
+        os.path.join(temp_dir, "pjud_verification_profile_*"),
+        os.path.join(temp_dir, "chrome_url_fetcher_*"),
+        os.path.join(temp_dir, "scoped_dir*")
     ]
     
     perfiles_a_borrar = []
@@ -164,6 +166,10 @@ def main():
     stop_event = manager.Event()
 
     while True:
+        # Limpieza periódica al inicio de cada ciclo de procesamiento
+        print("\n--- Realizando limpieza periódica de perfiles de navegador... ---")
+        limpiar_perfiles_antiguos()
+
         if os.path.exists(CHECKPOINT_FILE):
             with open(CHECKPOINT_FILE, 'r') as f:
                 checkpoint_data = json.load(f) if os.path.getsize(CHECKPOINT_FILE) > 0 else {}
@@ -256,23 +262,6 @@ def main():
                 print("\nTodas las tareas se completaron sin detectar bloqueos.")
 
 if __name__ == "__main__":
-    # La limpieza debe ser el primer paso, antes de iniciar cualquier proceso
-    limpiar_perfiles_antiguos()
-    
+    # La limpieza ahora se hace de forma periódica dentro de main()
     multiprocessing.freeze_support()
-    
-    while True:
-        main()
-        # Tras finalizar main(), revisamos si quedan tareas pendientes
-        if os.path.exists(CHECKPOINT_FILE):
-            with open(CHECKPOINT_FILE, 'r') as f:
-                checkpoint_data = json.load(f) if os.path.getsize(CHECKPOINT_FILE) > 0 else {}
-        else:
-            checkpoint_data = {}
-        # Si no quedan tareas pendientes, salimos del loop
-        tareas_pendientes = [tid for tid, tinfo in checkpoint_data.items() if tinfo.get('status') != 'completed']
-        if not tareas_pendientes:
-            print("\n¡Todas las fechas solicitadas han sido procesadas! Cerrando el ciclo automático.")
-            break
-        else:
-            print("\nReiniciando ciclo para continuar con las fechas pendientes...")
+    main()

@@ -293,3 +293,11 @@ def scrape_worker(task_info):
     finally:
         if driver:
             driver.quit()
+        # Limpieza final del perfil para asegurar que no queden residuos
+        if profile_path and os.path.exists(profile_path):
+            try:
+                import shutil
+                shutil.rmtree(profile_path)
+                print(f"[{task_id}] Perfil temporal '{profile_path}' eliminado exitosamente.")
+            except Exception as e:
+                print(f"[{task_id}] ADVERTENCIA: No se pudo eliminar el perfil temporal '{profile_path}'. Causa: {e}")
