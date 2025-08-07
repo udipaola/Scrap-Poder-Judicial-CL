@@ -91,16 +91,16 @@ def scrape_worker(task_info):
         try:
             print(f"[{task_id}] Asegurando clic en 'Búsqueda por Fecha'...")
             # Espera antes de hacer clic en "Consulta causas"
-            time.sleep(18)
+            time.sleep(5)
             wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[href="#BusFecha"]'))).click()
             # Espera después de hacer clic en "Consulta causas" y antes de filtrar por fecha
-            time.sleep(18)
+            time.sleep(3)
             print(f"[{task_id}] Seleccionando Competencia 'Corte Apelaciones'...")
             select_competencia = Select(wait.until(EC.presence_of_element_located((By.ID, "fecCompetencia"))))
             select_competencia.select_by_value("2")
 
             # --- INICIO: Espera inteligente para la carga AJAX de las cortes ---
-            time.sleep(10)
+            time.sleep(3)
             print(f"[{task_id}] Esperando a que la corte '{corte_nombre}' cargue en el menú...")
             wait.until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, f"#corteFec option[value='{corte_id}']"))
