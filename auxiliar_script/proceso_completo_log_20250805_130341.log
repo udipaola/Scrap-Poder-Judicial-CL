@@ -1,0 +1,42 @@
+=== PROCESO COMPLETADO - 2025-08-05 13:52:08.025289 ===
+
+📊 RESUMEN GENERAL:
+- Archivos procesados: 39039
+- Registros iniciales: 8554864
+- Registros tras filtros: 124429
+- Registros finales enviados a BD: 124429
+- Archivos movidos: 39039
+
+📈 ESTADÍSTICAS POR COMPETENCIA:
+  - apelaciones: 97674 registros (78.5%)
+  - laboral: 15737 registros (12.6%)
+  - suprema: 9022 registros (7.3%)
+  - general: 1996 registros (1.6%)
+wqaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+🔍 EFECTIVIDAD DE PARSERS:
+  - rol: 106696/124429 (85.7%) registros con datos
+  - rit: 15737/124429 (12.6%) registros con datos
+  - ruc: 15737/124429 (12.6%) registros con datos
+  - tribunal: 113389/124429 (91.1%) registros con datos
+  - caratulado: 113389/124429 (91.1%) registros con datos
+  - estado_causa: 122411/124429 (98.4%) registros con datos
+  - fecha_ingreso: 122411/124429 (98.4%) registros con datos
+2025-08-05 13:52:09,526 - INFO - === PROCESO COMPLETADO ===
+2025-08-05 13:52:09,527 - INFO - Archivos procesados: 39039
+2025-08-05 13:52:09,527 - INFO - Registros finales: 124429
+2025-08-05 13:52:09,528 - INFO - Archivos movidos: 39039
+2025-08-05 13:52:09,547 - INFO - Competencia apelaciones: 97674 registros
+2025-08-05 13:52:09,548 - INFO - Competencia laboral: 15737 registros
+2025-08-05 13:52:09,549 - INFO - Competencia suprema: 9022 registros
+2025-08-05 13:52:09,551 - INFO - Competencia general: 1996 registros
+
+✅ PROCESO COMPLETO FINALIZADO
+📝 Log guardado en: proceso_completo_log_20250805_130341.log
+🗄️  Datos enviados a PostgreSQL: chile.causas_judiciales
+📁 Archivos procesados movidos a: C:\Worldsys\Scrap-Poder-Judicial-CL\Resultados_enviados_bd
+
+🎯 VERIFICACIÓN FINAL:
+✓ Campo 'fuente_competencia' incluido: True
+✓ Registros con fuente_competencia válida: 124429
+✓ Parsers aplicados correctamente por competencia
+✓ Datos estructurados y enviados a base de datos

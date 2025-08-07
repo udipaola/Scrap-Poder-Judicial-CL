@@ -1,0 +1,253 @@
+Recurrente
+Ab.Recurrente
+Recurrido
+OTRO
+Ampdo.
+VICTIMA
+FISCAL
+DEF.PEN.PUB.
+QTE.
+DEF.PEN.PRIV
+APOD.
+AB. AP.
+DNTE.
+DTE.
+AB.DTE.
+Abog.Pte.D
+ADJ
+ABG.ADJ
+AP.DTE.
+ABG.QTE
+AB. SOL.
+Ab. Recurrido
+LIQUI.
+AB.ACRDOR.
+ACRDOR.
+PERI
+AB.TERC
+TERC.EXC.
+TERC.COAD.
+AP.SOLIC.
+SOLICITANTE
+AP.ACRDOR.
+AP.LIQ
+Apod.Dndo.
+AB.TER.
+Apoderado del Tercero
+AB.TER
+TERC.INDEP.
+Abog.Rcdte.
+Abog.Rcdo.
+RECDO
+RECTE
+Apod.Dte
+ABG.LIQ
+Apod.Rcrrido.
+Apod.Rcdte
+Causante
+nan
+T.IND
+TERC.
+AB. SINDICO
+SÍNDICO
+Abogado Patrocinante del Tercero
+AP.TERC.
+TERC.CIV.
+Curador
+DNCTE.
+Abogado del Denunciante
+DEM.CIV.
+Apod.Rcrren.
+OPOSIT0
+AB.OPOS
+PREFEREN
+ABG.PREF
+AVERIGUAR GLOSA
+TUTOR RPA
+ABG.VEE
+EMPLEADOR
+AB.RECDO.
+AB.TERC.
+AB.RECTE.
+AFECTADO
+AP.ADJ
+AP.OPOS
+AP.TER.
+VEEDOR
+Apod.Rcdo.
+MEDIADOR
+Visitador
+Abogado del Recusador
+AC.HIP
+DEF.PUBLICO
+AP.VEE
+AP.HIP
+Rcte. no ben.
+Recusado
+ABG.HIP
+INST.
+DTE.ADH.
+AB.DTE.ADH.
+Abogado del Acusado
+Causante (Difunto)
+AB. EMPLEADOR
+ABG.SUP
+SUPERINT.
+ABG.DNTE
+ABOG.
+TESTIGO.
+DE.COMUN
+AP.SUP
+DEF.P
+ABG. RECURRENTE
+RECURRENTE
+RECURRIDO
+ABG. RECURRIDO
+PH2
+PATRO.TERC.
+PH3
+MIN.PUB.
+REPR. AMP
+T.EXC.
+Pro.Num.Recurri
+Proc.Num.Rec.
+REQTE.
+TutorRPA
+FISC. JUDIC (S)
+SLCTE.
+AB.INST.RCDA.
+INST.RCDA.
+PH1
+PH4
+TERC.EJEC.
+APD.TERCERO
+T.IND.
+NIÑO
+NIÑA
+AC.PEN.
+T.COAD.
+ABG.QTE.
+MINISTRO (I)
+ABG.LIT2
+Defensor
+AB.REQTE
+JUEZ ARBITRO
+CAUSANTE (DIF)
+ABG.TER.
+SLCDO.
+CSNTE.
+ABG.P.TERCERO
+ABG.AMPARADO
+AP.DNCTE.
+ABG.SOLICI.
+Policía
+Colaborador
+Defensor Privado
+REP. LEGAL NNA
+Ambos
+AB.EMPLEADOR
+Abogado del Menor
+APOD.SUPER
+Testigo
+AB.DTE
+AP.DTE
+AB. SO
+SOLIC.
+AP.SOL
+AP.ACR
+AB.ACR
+ACRDOR
+AP.DNT
+ABG.DN
+TERC.E
+LIQUID
+TERC.I
+AP.TER
+PATRO.
+SUPERI
+ABG.LI
+EXTE.
+AB.EXT
+EXDO.
+AFECTA
+TERC.C
+TER.EJ
+ABG.AD
+AP.EXD
+AB.EXD
+AP.EXT
+ABG.SU
+ABG.VE
+AB.OPO
+OPOSIT
+AB.REC
+POS.AD
+RECDO.
+ABG.HI
+AP.OPO
+DTE.AD
+DE.COM
+RECTE.
+CUR.LI
+AP.REC
+INTERD
+AP.PRE
+ABG.PR
+PREFER
+AP.RCT
+AB.RCT
+AB.DNC
+AB.RCD
+AP.DNC
+BENEF.
+T.EXC
+AP.RCD
+T.COAD
+S�NDIC
+AB.S�N
+RESERVADA
+Denunciado.
+Denunciante.
+Fiscal.
+Defensor.
+Víctima.
+Testigo.
+Colaborador.
+Policía.
+Querellado.
+Querellante.
+Abogado patrocinante.
+Defensor privado.
+Apoderado.
+Perito
+Abogado
+Defensor penal público
+Denunciado
+Fiscal
+Querellado
+Querellante
+Víctima
+Denunciante
+Defensor privado
+Apoderado
+Demandante civil.
+TutorRPA.
+CAPJ
+Demandante
+Habilitado en derecho
+Solicitante
+Abogado del querellante
+Apoderado del querellante
+Abogado del querellado
+Apoderado habilitado en derecho
+Abogado de la víctima
+Apoderado de la víctima
+Depositante
+Apoderado del denunciado
+EMPLEA
+INST.R
+RCTE.
+AB.INS
+AB.EMP
+POST.A
+AB.SIN
