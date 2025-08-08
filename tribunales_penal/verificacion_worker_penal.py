@@ -5,6 +5,7 @@ import tempfile
 import os
 import uuid
 from selenium import webdriver
+from utils_penal import forzar_cierre_navegadores
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -20,6 +21,8 @@ def verificacion_worker(task):
     headless_mode, = task
 
     for intento in range(MAX_REINTENTOS_VERIFICACION):
+        # Forzar cierre de navegadores antes de cada intento para asegurar un estado limpio
+        forzar_cierre_navegadores()
         print(f"[VERIFICADOR - Intento {intento + 1}/{MAX_REINTENTOS_VERIFICACION}] Iniciando...")
         driver = None
         try:

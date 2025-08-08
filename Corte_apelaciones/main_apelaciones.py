@@ -4,6 +4,7 @@ import argparse
 import multiprocessing
 import json
 import os
+import subprocess
 import time
 import random
 import shutil
@@ -33,7 +34,9 @@ def limpiar_perfiles_antiguos():
     # Patrones para encontrar todos los perfiles relevantes
     patrones = [
         os.path.join(temp_dir, "pjud_profile_*"),
-        os.path.join(temp_dir, "pjud_verification_profile_*")
+        os.path.join(temp_dir, "pjud_verification_profile_*"),
+        os.path.join(temp_dir, "chrome_url_fetcher_*"),
+        os.path.join(temp_dir, "scoped_dir*")
     ]
     
     perfiles_a_borrar = []
@@ -116,7 +119,18 @@ def rotar_y_verificar_ip(headless_mode):
         
         pais_elegido = random.choice(PAISES_NORDVPN)
         print(f"[IP ROTATION] Conectando a: {pais_elegido}")
-        os.system(f'cd "{NORDVPN_PATH}" && nordvpn -c -g "{pais_elegido}"')
+        try:
+            # Usamos subprocess.run con timeout para evitar bloqueos
+            comando = ['nordvpn', '-c', '-g', pais_elegido]
+            print(f"[IP ROTATION] Ejecutando comando: {' '.join(comando)}")
+            subprocess.run(comando, check=True, timeout=120, cwd=NORDVPN_PATH, shell=True, capture_output=True, text=True)
+            print(f"[IP ROTATION] Comando de conexión a {pais_elegido} completado.")
+        except subprocess.TimeoutExpired:
+            print(f"[IP ROTATION ERROR] El comando para conectar a {pais_elegido} excedió el tiempo de espera de 120s.")
+            continue # Reintentar con otro país
+        except subprocess.CalledProcessError as e:
+            print(f"[IP ROTATION ERROR] Fallo al conectar a {pais_elegido}. Error: {e.stderr}")
+            continue # Reintentar con otro país
         
         print("[IP ROTATION] Esperando 40s para estabilizar conexión...")
         time.sleep(40)
@@ -152,6 +166,10 @@ def main():
     stop_event = manager.Event()
 
     while True:
+        # Limpieza periódica al inicio de cada ciclo de procesamiento
+        print("\n--- Realizando limpieza periódica de perfiles de navegador... ---")
+        limpiar_perfiles_antiguos()
+
         if os.path.exists(CHECKPOINT_FILE):
             with open(CHECKPOINT_FILE, 'r') as f:
                 checkpoint_data = json.load(f) if os.path.getsize(CHECKPOINT_FILE) > 0 else {}
@@ -244,23 +262,6 @@ def main():
                 print("\nTodas las tareas se completaron sin detectar bloqueos.")
 
 if __name__ == "__main__":
-    # La limpieza debe ser el primer paso, antes de iniciar cualquier proceso
-    limpiar_perfiles_antiguos()
-    
+    # La limpieza ahora se hace de forma periódica dentro de main()
     multiprocessing.freeze_support()
-    
-    while True:
-        main()
-        # Tras finalizar main(), revisamos si quedan tareas pendientes
-        if os.path.exists(CHECKPOINT_FILE):
-            with open(CHECKPOINT_FILE, 'r') as f:
-                checkpoint_data = json.load(f) if os.path.getsize(CHECKPOINT_FILE) > 0 else {}
-        else:
-            checkpoint_data = {}
-        # Si no quedan tareas pendientes, salimos del loop
-        tareas_pendientes = [tid for tid, tinfo in checkpoint_data.items() if tinfo.get('status') != 'completed']
-        if not tareas_pendientes:
-            print("\n¡Todas las fechas solicitadas han sido procesadas! Cerrando el ciclo automático.")
-            break
-        else:
-            print("\nReiniciando ciclo para continuar con las fechas pendientes...")
+    main()
